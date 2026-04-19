@@ -1,0 +1,6 @@
+**/.terraform/*
+*.env
+*.tfstate
+*.hcl
+*.backup
+
