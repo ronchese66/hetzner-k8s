@@ -1,0 +1,12 @@
+plugin: hetzner.hcloud.hcloud
+token: "{{ lookup('env', 'HCLOUD_TOKEN') }}"
+connect_with: private_ipv4
+
+groups:
+  control_plane: "labels.get('nodeType') == 'controlPlane'"
+  workers: "labels.get('nodeType') == 'worker'"
+  bastion: "labels.get('nodeType') == 'bastion'"
+
+compose:
+  ansible_user: ansible
+  ansible_ssh_private_key_file: ~/.ssh/k8s-cluster-key
