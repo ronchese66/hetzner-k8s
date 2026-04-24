@@ -21,8 +21,16 @@ resource "hcloud_server" "worker_nodes" {
       - name: ansible
         groups: sudo
         shell: /bin/bash
-        sudo: ALL=(ALL) NOPASSWD:ALL
+        sudo: "ALL=(ALL) NOPASSWD:ALL"
+        lock_passwd: true
         ssh_authorized_keys: 
+          - ${var.public_key}
+      - name: admin
+        groups: wheel
+        shell: /bin/bash
+        sudo: "ALL=(ALL) NOPASSWD:ALL"
+        lock_passwd: true
+        ssh_authorized_keys:
           - ${var.public_key}
   EOF
 

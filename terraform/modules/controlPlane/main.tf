@@ -17,10 +17,18 @@ resource "hcloud_server" "control_plane" {
     #cloud-config
     users:
       - name: ansible
-        groups: sudo
+        groups: wheel
         shell: /bin/bash
-        sudo: ALL=(ALL) NOPASSWD:ALL
+        sudo: "ALL=(ALL) NOPASSWD:ALL"
+        lock_passwd: true
         ssh_authorized_keys: 
+          - ${var.public_key}
+      - name: admin
+        groups: wheel
+        shell: /bin/bash
+        sudo: "ALL=(ALL) NOPASSWD:ALL"
+        lock_passwd: true
+        ssh_authorized_keys:
           - ${var.public_key}
   EOF
   
