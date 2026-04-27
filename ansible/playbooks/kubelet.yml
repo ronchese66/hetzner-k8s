@@ -1,0 +1,16 @@
+--- 
+
+- name: Install and enable kubelet 
+  hosts: control_plane:workers
+  tasks:
+
+    - name: Install kubelet 
+      ansible.builtin.dnf:
+        name: "kubelet-{{ kubernetes_version  }}" # 1.35
+        state: present
+
+    - name: Enable and start kubelet 
+      ansible.builtin.service:
+        name: kubelet
+        enabled: true
+        state: started 

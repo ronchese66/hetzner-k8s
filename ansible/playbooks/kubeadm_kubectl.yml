@@ -1,0 +1,15 @@
+--- 
+
+- name: Install kubeadm & kubectl 
+  hosts: control_plane:workers
+  tasks:
+
+    - name: Install kubeadm 
+      ansible.builtin.dnf:
+        name: "kubeadm-{{ kubernetes_version  }}" # 1.35
+        state: present 
+
+    - name: Install kubectl 
+      ansible.builtin.dnf:
+        name: "kubectl-{{ kubernetes_version  }}"
+        state: present 
