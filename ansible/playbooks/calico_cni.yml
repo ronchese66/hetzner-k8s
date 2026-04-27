@@ -1,0 +1,90 @@
+---
+
+# --- vars (definef in group_vars/all.yml) ---
+# calico_version: "v3.31.5"
+# pod_network_cidr: 10.244.0.0/16
+# 
+# --- constants --- 
+# operator manifest: https://raw.githubusercontent.com/projectcalico/calico/{{ calico_version }}/manifests/tigera-operator.yaml
+# encapsulation: VXLANCrossSubnet
+#
+
+- name: Install Tigera Operator 
+  hosts: control_plane
+  become: false 
+  tasks:
+
+    - name: Apply Tigera manifest
+      kubernetes.core.k8s:
+        src: "https://raw.githubusercontent.com/projectcalico/calico/{{ calico_version }}/manifests/tigera-operator.yaml"
+        state: present
+
+    - name: Wait for Tigera operator to be ready 
+      kubernetes.core.k8s_info:
+        kind: Deployment
+        name: tigera-operator 
+        namespace: tigera-operator
+        wait: true
+        wait_condition:
+          type: Available
+          status: "True"
+        wait_timeout: 300
+
+- name: Install Calico CNI 
+  hosts: control_plane
+  become: false
+  tasks:
+
+    - name: Apply Calico installation CR 
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: operator.tigera.io/v1
+          kind: Installation 
+          metadata:
+            name: default
+          spec:
+            calicoNetwork:
+              ipPools:
+                - blockSize: 26
+                  cidr: "{{ pod_network_cidr }}"
+                  encapsulation: VXLANCrossSubnet
+                  natOutgoing: Enabled
+                  nodeSelector: all()
+
+    - name: Wait for calico daemonset to be ready 
+      kubernetes.core.k8s_info:
+        kind: DaemonSet 
+        name: calico-node
+        namespace: calico-system
+      register: calico_ds
+      until:
+        - calico_ds.resources | length > 0
+        - calico_ds.resources[0].status.desiredNumberScheduled is defined 
+        - calico_ds.resources[0].status.numberReady == calico_ds.resources[0].status.desiredNumberScheduled
+      retries: 60
+      delay: 5
+
+        
+
+    - name: Wait for calico-kube-controllers to be ready 
+      kubernetes.core.k8s_info:
+        kind: Deployment
+        name: calico-kube-controllers
+        namespace: calico-system
+        wait: true
+        wait_condition:
+          type: Available
+          status: "True"
+        wait_timeout: 300    
+
+    - name: Wait for all nodes to be ready 
+      kubernetes.core.k8s_info:
+        kind: Node 
+      register: node_status
+      until:
+        - node_status.resources | length > 0
+        - node_status.resources | selectattr('status.conditions', 'defined') | list | length > 0
+        - node_status.resources | map(attribute='status.conditions') | flatten | selectattr('type', 'equalto', 'Ready') | selectattr('status', 'equalto', 'True') | list | length == node_status.resources | length
+      retries: 60
+      delay: 5
