@@ -11,7 +11,6 @@
 # admin.conf: /etc/kubernetes/admin.conf
 # kubeconfig: /home/ansible/.kube/config
 
-
 - name: Init cluster
   hosts: control_plane
   tasks:

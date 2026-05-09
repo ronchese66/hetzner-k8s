@@ -1,0 +1,206 @@
+---
+
+# --- vars (defined in group_vars/all/)
+# eso_version: "2.4.1"
+# infisical_client_id: group_vars/all/secrets.yml
+# infisical_client_secret: group_vars/all/secrets.yml
+# infisical_host: "https://app.infisical.com"
+# infisical_project_slug: group_vars/all/secrets.yml
+# infisical_environment_slug: group_vars/all/secrets.yml
+# 
+# --- constants --- 
+# bootstrap secret name: infisical-universal-auth
+# bootstrap secret namespace: external-secrets
+# ClusterSecretStore name: infisical-store
+# ESO helm repo: https://charts.external-secrets.io
+# hcloud secret name: hcloud (required by CCM)
+# hcloud secret namespace: kube-system
+# cloudflare api token secret name: cloudflare-api-token
+# cloudflare api token secret namespace: cert-manager
+
+
+- name: Install ESO 
+  hosts: control_plane
+  become: false
+  tasks:
+
+    - name: Add ESO Helm repo 
+      kubernetes.core.helm_repository:
+        repo_name: external-secrets
+        repo_url: https://charts.external-secrets.io
+
+    - name: Install ESO via Helm 
+      kubernetes.core.helm:
+        name: external-secrets
+        chart_ref: external-secrets/external-secrets
+        release_namespace: external-secrets
+        create_namespace: true 
+        chart_version: "{{ eso_version }}"
+        wait: true 
+
+    - name: Wait for ESO Deployment to be available 
+      kubernetes.core.k8s_info:
+        kind: Deployment
+        name: external-secrets
+        namespace: external-secrets
+        wait: true
+        wait_condition:
+          type: Available
+          status: "True"
+        wait_timeout: 300
+
+    - name: Wait for ESO webhook to be available
+      kubernetes.core.k8s_info:
+        kind: Deployment
+        name: external-secrets-webhook
+        namespace: external-secrets
+        wait: true 
+        wait_condition:
+          type: Available
+          status: "True"
+        wait_timeout: 300
+
+    - name: Wait for ClusterSecretStore CRD to be available
+      kubernetes.core.k8s_info:
+        kind: CustomResourceDefinition
+        name: clustersecretstores.external-secrets.io
+      register: crd_status
+      until:
+        - crd_status.resources | length > 0
+      retries: 20
+      delay: 5
+        
+
+- name: Configure Infisical 
+  hosts: control_plane
+  become: false
+  tasks:
+
+    - name: Create bootstrap secret with Infisical Universal Auth credentials
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: infisical-universal-auth 
+            namespace: external-secrets
+          type: Opaque
+          stringData:
+            clientId: "{{ infisical_client_id }}"
+            clientSecret: "{{ infisical_client_secret }}"
+
+    - name: Create ClusterSecretStore
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: external-secrets.io/v1
+          kind: ClusterSecretStore
+          metadata:
+            name: infisical-store
+          spec:
+            provider:
+              infisical:
+                hostAPI: "{{ infisical_host }}"
+                auth:
+                  universalAuthCredentials:
+                    clientId:
+                      name: infisical-universal-auth
+                      namespace: external-secrets
+                      key: clientId
+                    clientSecret:
+                      name: infisical-universal-auth
+                      namespace: external-secrets
+                      key: clientSecret
+                secretsScope:
+                  projectSlug: "{{ infisical_project_slug }}"
+                  environmentSlug: "{{ infisical_environment_slug }}"
+
+- name: Transfer hcloud Secret control to ESO 
+  hosts: control_plane
+  become: false
+  tasks:
+
+    - name: Delete bootstrap hcloud secret 
+      kubernetes.core.k8s:
+        state: absent
+        definition:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: hcloud
+            namespace: kube-system
+
+    - name: Create ExternalSecret for hcloud Secret
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: external-secrets.io/v1
+          kind: ExternalSecret
+          metadata:
+            name: hcloud
+            namespace: kube-system
+          spec:
+            refreshInterval: "1h"
+            secretStoreRef:
+              name: infisical-store
+              kind: ClusterSecretStore
+            target:
+              name: hcloud
+              creationPolicy: Owner
+            data:
+              - secretKey: token
+                remoteRef:
+                  key: HCLOUD_TOKEN
+              - secretKey: network
+                remoteRef:
+                  key: HCLOUD_NETWORK
+
+    - name: Wait for hcloud Secret to be recreated by ESO
+      kubernetes.core.k8s_info:
+        kind: Secret
+        name: hcloud 
+        namespace: kube-system
+      register: hcloud_secret
+      until:
+        - hcloud_secret.resources | length > 0
+      retries: 30
+      delay: 5
+    
+- name: Create ExternalSecret for CloufFlare API Token
+  hosts: control_plane
+  become: false
+  tasks:
+
+    - name: Create ExternalSecret for CloufFlare API token
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: external-secrets.io/v1
+          kind: ExternalSecret
+          metadata:
+            name: cloudflare-api-token
+            namespace: cert-manager
+          spec:
+            refreshInterval: "1h"
+            secretStoreRef:
+              name: infisical-store
+              kind: ClusterSecretStore
+            target:
+              name: cloudflare-api-token
+              creationPolicy: Owner
+            data:
+              - secretKey: api-token 
+                remoteRef: 
+                  key: CLOUDFLARE_API_TOKEN
+
+    - name: Wait for cloudflare-api-token Secret to be created 
+      kubernetes.core.k8s_info:
+        kind: Secret
+        name: cloudflare-api-token
+        namespace: cert-manager
+      register: cloudflare_secret
+      until:
+        - cloudflare_secret.resources | length > 0
+      retries: 30
+      delay: 10
