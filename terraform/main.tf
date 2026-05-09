@@ -34,3 +34,8 @@ module "loadBalancer" {
 module "network" {
   source = "./modules/network"
 }   
+
+module "etcd_backup_volume" {
+  source = "./modules/etcd_backup_volume"
+  server_id = module.controlPlane.server_id
+}
