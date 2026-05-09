@@ -1,0 +1,47 @@
+---
+
+# --- vars (defined in group_vars/all/)
+# ccm_version: "1.28.1"
+# pod_network_cidr: "10.244.0.0/16"
+#
+# --- constants --- 
+# helm repo: https://charts.hetzner.cloud
+# release name: hccm 
+# namespace: kube-system
+# networking.enabled=true
+# networking,clusterCIDR: pod_network_cidr
+# route controller disabled
+#
+
+- name: Install Hetzner CCM 
+  hosts: control_plane
+  become: false
+  tasks:
+
+    - name: Add Hetzner helm repo 
+      kubernetes.core.helm_repository:
+        name: hcloud
+        repo_url: https://charts.hetzner.cloud
+
+    - name: Install Hetzner CCM via helm chart 
+      kubernetes.core.helm:
+        name: hccm
+        chart_ref: hcloud/hcloud-cloud-controller-manager
+        release_namespace: kube-system
+        chart_version: "{{ ccm_version }}"
+        wait: true
+        set_values:
+          - value: networking.enabled=true
+          - value: "networking.clusterCIDR={{ pod_network_cidr }}"
+          - value: networking.networkRoutesEnabled=false
+
+    - name: Wait fot CCM Deployment to be ready
+      kubernetes.core.k8s_info:
+        kind: Deployment
+        name: hcloud-cloud-controller-manager
+        namespace: kube-system
+        wait: true
+        wait_condition:
+          type: Available
+          status: "True"
+        wait_timeout: 300

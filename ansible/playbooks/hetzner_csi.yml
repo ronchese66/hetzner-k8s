@@ -1,0 +1,63 @@
+--- 
+
+# --- vars (defined in group_var/all/)
+# csi_version: "2.16.0"
+#
+# --- constants ---
+# helm repo: https://charts.hetzner.cloud
+# release name: hcloud-csi
+# namespace: kube-system
+# secret: hcloud 
+# storageClass: hcloud-volumes
+# reclaimPolicy: Delete 
+# volumeBindingMode: WaitForFirstConsumer
+
+
+- name: Install Hetzner CSI 
+  hosts: control_plane
+  become: false
+  tasks:
+
+    - name: Add Hetzner Helm repo 
+      kubernetes.core.helm_repository:
+        name: hcloud
+        repo_url: https://charts.hetzner.cloud
+
+    - name: Install Hetzner CSI via helm
+      kubernetes.core.helm:
+        name: hcloud-csi
+        chart_ref: hcloud/hcloud-csi
+        release_namespace: kube-system
+        chart_version: "{{ csi_version }}"
+        wait: true
+        values:
+          controller:
+            hcloudToken:
+              existingSecret:
+                name: hcloud
+                key: token 
+
+    - name: Wait for CSI controller be ready
+      kubernetes.core.k8s_info:
+        kind: Deployment
+        name: hcloud-csi-controller
+        namespace: kube-system
+        wait: true
+        wait_condition:
+          type: Available
+          status: "True"
+        wait_timeout: 300
+
+    - name: Wait for CSI DaemonSet to be ready
+      kubernetes.core.k8s_info:
+        kind: DaemonSet
+        name: hcloud-csi-node
+        namespace: kube-system
+      register: csi_node_ds
+      until:
+        - csi_node_ds.resources | length > 0
+        - csi_node_ds.resources[0].status.desiredNumberScheduled is defined 
+        - csi_node_ds.resources[0].status.numberReady == csi_node_ds.resources[0].status.desiredNumberScheduled 
+      retries: 60
+      delay: 5
+

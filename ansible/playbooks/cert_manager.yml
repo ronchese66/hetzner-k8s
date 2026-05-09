@@ -1,0 +1,130 @@
+---
+
+# --- vars (defined in group_vars/all/) --- 
+# cert_manager_version: "v1.20.2"
+# domain_name: "ronchese.pp.ua"
+# cert_manager_email: group_vars/all/secrets.yml
+#
+# --- constants --- 
+# helm repo: https://charts.jetstack.io
+# namespace: cert-manager
+# ClusterIssuer name: letsencrypt-prod
+# CloudFlare API Token Secret: cloudflare-api-token (created by ESO in k8s_infisical_eso.yml)
+# privateKeySecretRef: letsencrypt-prod-account-key
+# DNS01 propagation: automatic via CloudFlare API
+
+
+- name: Install cert-manager
+  hosts: control_plane
+  become: false
+  tasks:
+
+    - name: Add cert-manager Helm repo 
+      kubernetes.core.helm_repository:
+        repo_name: jetstack 
+        repo_url: https://charts.jetstack.io
+
+    - name: Install cert-manager via helm 
+      kubernetes.core.helm:
+        name: cert-manager
+        chart_ref: jetstack/cert-manager
+        release_namespace: cert-manager
+        create_namespace: true
+        chart_version: "{{ cert_manager_version }}"
+        wait: true
+        values:
+          crds:
+            enabled: true
+            keep: true
+
+    - name: Wait for cert-manager deployment to be available
+      kubernetes.core.k8s_info:
+        kind: Deployment 
+        name: cert-manager
+        namespace: cert-manager
+        wait: true
+        wait_condition:
+          type: Available 
+          status: "True"
+        wait_timeout: 300
+
+    - name: Wait for cert-manager webhook to be available
+      kubernetes.core.k8s_info:
+        kind: Deployment
+        name: cert-manager-webhook
+        namespace: cert-manager
+        wait: true
+        wait_condition:
+          type: Available
+          status: "True"
+        wait_timeout: 300
+
+    - name: Wait for cert-manager cainjector to be available
+      kubernetes.core.k8s_info:
+        kind: Deployment
+        name: cert-manager-cainjector
+        namespace: cert-manager
+        wait: true
+        wait_condition:
+          type: Available
+          status: "True"
+        wait_timeout: 300
+
+    - name: Wait for ClusterIssuer CRD to be available
+      kubernetes.core.k8s_info:
+        kind: CustomResourceDefinition
+        name: clusterissuers.cert-manager.io
+      register: crd_status
+      until:
+        - crd_status.resources | length > 0
+      retries: 60
+      delay: 5
+
+- name: Configure cert-manager
+  hosts: control_plane
+  become: false
+  tasks:
+
+    - name: Wait for cloudflare-api-token to be exists
+      kubernetes.core.k8s_info:
+        kind: Secret
+        name: cloudflare-api-token
+        namespace: cert-manager
+      register: cf_secret
+      until:
+        - cf_secret.resources | length > 0
+      retries: 30
+      delay: 5
+
+    - name: Create ClusterIssuer for Let's Encrypt prod with DNS01
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: cert-manager.io/v1
+          kind: ClusterIssuer 
+          metadata:
+            name: letsencrypt-prod
+          spec:
+            acme:
+              server: https://acme-v02.api.letsencrypt.org/directory
+              email: "{{ cert_manager_email }}"
+              privateKeySecretRef:
+                name: letsencrypt-prod-account-key
+              solvers:
+                - dns01:
+                    cloudflare:
+                      apiTokenSecretRef:
+                        name: cloudflare-api-token
+                        key: api-token
+
+    - name: Wait for ClusterIssuer to be ready
+      kubernetes.core.k8s_info:
+        kind: ClusterIssuer
+        name: letsencrypt-prod
+      register: issuer_status
+      until:
+        - issuer_status.resources | length > 0
+        - issuer_status.resources[0].status.conditions is defined 
+        - issuer_status.resources[0].status.conditions | selectattr('type', 'equalto', 'Ready') | selectattr('status', 'equalto', 'True') | list | length > 0
+      retries: 30
+      delay: 10
