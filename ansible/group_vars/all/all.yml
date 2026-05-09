@@ -1,0 +1,35 @@
+ansible_become: true
+
+# global
+
+# versions
+
+# Kubernetes
+kubernetes_repo_version: "v1.35"
+kubernetes_version: "1.35"
+# Calico
+calico_version: "v3.31.5"
+
+# network
+pod_network_cidr: "10.244.0.0/16"
+service_cidr: "10.96.0.0/12"
+
+
+# Infisical ESO auth: SEE group_vars/all/secrets.yml
+eso_version: "2.4.1"
+infisical_host: "https://app.infisical.com"
+
+
+# Hetzner Cloud Controller Manager
+ccm_version: "1.28.1"
+
+
+# Hetzner Container Storage Interface
+csi_version: "2.16.0"
+  
+
+# Certificate Manager
+cert_manager_version: "v1.20.2"
+domain_name: "ronchese.pp.ua"
+
+
