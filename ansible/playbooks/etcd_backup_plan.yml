@@ -1,0 +1,34 @@
+---
+
+# --- constants ---
+# backup destination: /var/backups/etcd/ (Hetzner volume)
+# etcd endpoint: https://127.0.0.1:2379
+
+- name: Backup etcd
+  hosts: control_plane
+  tasks:
+
+    - name: Verify backup volume is mounted
+      ansible.builtin.command:
+        cmd: mountpoint -q /var/backups/etcd
+
+    - name: Create etcd snapshot
+      ansible.builtin.command:
+        cmd: >
+          etcdctl snapshot save /var/backups/etcd/snapshot-{{ ansible_date_time.epoch }}.db
+          --endpoints=https://127.0.0.1:2379
+          --cacert=/etc/kubernetes/pki/etcd/ca.crt
+          --cert=/etc/kubernetes/pki/etcd/server.crt
+          --key=/etc/kubernetes/pki/etcd/server.key
+      environment:
+        ETCDCTL_API: "3"
+
+    - name: List backup dir
+      ansible.builtin.command:
+        cmd: ls -l /var/backups/etcd/
+      register: backup_dir
+
+    - name: Show content
+      ansible.builtin.debug:
+        msg: "{{ backup_dir.stdout_lines }}"
+

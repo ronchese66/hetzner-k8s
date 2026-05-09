@@ -1,0 +1,32 @@
+---
+
+# --- constants ---
+# volume name: etcd_backup (defined in terraform)
+# mount point: /var/backups/etcd
+# filesystem: ext4
+#
+
+- name: Mount etcd backup volume
+  hosts: control_plane
+  tasks:
+
+    - name: Get volume info from Hetzner API
+      hetzner.hcloud.volume_info:
+        name: etcd_backup
+      register: volume_info
+
+    - name: Create mount point
+      ansible.builtin.file:
+        path: /var/backups/etcd
+        state: directory
+        mode: '0700'
+        owner: root
+        group: root
+
+    - name: Mount etcd backup volume and persist in fstab
+      ansible.posix.mount:
+        path: /var/backups/etcd
+        src: "{{ volume_info.hcloud_volume_info[0].linux_device }}"
+        fstype: ext4
+        opts: discard,defaults,nofail
+        state: mounted
