@@ -13,6 +13,10 @@ calico_version: "v3.31.5"
 # network
 pod_network_cidr: "10.244.0.0/16"
 service_cidr: "10.96.0.0/12"
+private_subnet: "10.0.1.0/24"
+bastion_ip: "10.0.1.5"
+control_plane_ip: "10.0.1.2"
+lb_ip: "10.0.1.10"
 
 
 # Infisical ESO auth: SEE group_vars/all/secrets.yml
@@ -31,5 +35,13 @@ csi_version: "2.16.0"
 # Certificate Manager
 cert_manager_version: "v1.20.2"
 domain_name: "ronchese.pp.ua"
+
+
+# NGINX Ingress
+ingress_nginx_version: "2.5.1"
+
+
+# etcd and etcdctl version
+etcd_version: "3.6.6"
 
 
