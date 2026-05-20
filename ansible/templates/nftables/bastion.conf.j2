@@ -1,0 +1,20 @@
+flush ruleset
+
+table inet filter {
+
+    chain input {
+        type filter hook input priority 0; policy drop;
+
+        iif lo accept 
+        ct state established,related accept
+
+        tcp dport 22 accept 
+        ip protocol icmp ip saddr {{ private_subnet }} accept 
+
+        log prefix "nftables-drop-bastion: " flags all drop
+    }
+
+    chain output {
+        type filter hook output priority 0; policy accept;
+    }
+}
