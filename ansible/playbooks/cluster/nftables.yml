@@ -1,0 +1,64 @@
+---
+
+# --- vars (defined in groups_vars/all/)
+# private_subnet: "10.0.1.0/24"
+# bastion_ip: "10.0.1.5"
+# lb_ip: "10.0.1.10"
+#
+
+- name: Disable firewalld on all hosts 
+  hosts: control_plane:workers:bastion
+  tasks:
+
+    - name: Disable firewalld
+      ansible.builtin.service:
+        name: firewalld
+        state: stopped
+        enabled: false
+
+- name: Apply nftables config on control plane node
+  hosts: control_plane
+  tasks:
+
+    - name: Apply nftables 
+      ansible.builtin.template:
+        src: ../../templates/nftables/control_plane.conf.j2
+        dest: /etc/nftables.conf
+        mode: '0640'
+        owner: root
+        group: root
+
+- name: Apply nftables config on worker nodes
+  hosts: workers
+  tasks:
+
+    - name: Apply nftables 
+      ansible.builtin.template:
+        src: ../../templates/nftables/workers.conf.j2
+        dest: /etc/nftables.conf
+        mode: '0640'
+        owner: root
+        group: root
+
+- name: Apply nftables config on bastion
+  hosts: bastion
+  tasks:
+
+    - name: Apply nftables 
+      ansible.builtin.template:
+        src: ../../templates/nftables/bastion.conf.j2
+        dest: /etc/nftables.conf
+        mode: '0640'
+        owner: root
+        group: root
+
+- name: Enable and restart nftables 
+  hosts: control_plane:workers:bastion
+  tasks:
+
+    - name: Enable and restart
+      ansible.builtin.service:
+        name: nftables
+        state: restarted
+        enabled: true
+

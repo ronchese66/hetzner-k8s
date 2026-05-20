@@ -58,6 +58,7 @@
       ansible.builtin.dnf:
         name:
           - curl 
+          - git
           - net-tools
           - bind-utils
           - tcpdump

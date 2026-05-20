@@ -1,0 +1,230 @@
+---
+
+# --- vars (defined in group_vars/all/)
+# kubernetes_repo_version: "v1.35"
+# kubernetes_version: "1.35.0"
+# etcd_version: "3.6.6"
+# hcloud_token: group_vars/all/secrets.yml
+#
+# --- constants ---
+# etcdctl: github.com/etcd-io/etcd/releases/download/v{{ etcd_version }}
+# hcloud token env file: /etc/hcloud.env 
+# python daemon: /usr/local/bin/hcloud-dns-sync.py
+# systemd service: /etc/systemd/system/hcloud-dns-sync.service
+# daemon restart interval: 60s
+
+- name: Update packages, install utils, set hostname and timezone 
+  hosts: bastion
+  tasks:
+
+    - name: Set hostname by hetzner
+      ansible.builtin.hostname:
+        name: "{{ inventory_hostname  }}"
+
+    - name: Set timezone to UTC
+      community.general.timezone:
+        name: UTC
+      
+    - name: Update packages
+      ansible.builtin.dnf:
+        name: "*"
+        state: latest
+
+    - name: Install utils
+      ansible.builtin.dnf:
+        name:
+          - curl 
+          - git
+          - net-tools
+          - bind-utils
+          - tcpdump
+        state: present
+
+- name: SSH hardening
+  hosts: bastion
+  tasks:
+  
+    - name: Disable root login via SSH
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?PermitRootLogin'
+        line: 'PermitRootLogin no'
+        validate: 'sshd -t -f %s'
+
+    - name: Disable password authentication
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?PasswordAuthentication'
+        line: 'PasswordAuthentication no'
+        validate: 'sshd -t -f %s'
+
+    - name: Reload sshd
+      ansible.builtin.service:
+        name: sshd
+        state: reloaded
+
+- name: Install Ansible and dependencies
+  hosts: bastion
+  tasks:
+
+    - name: Install pipx
+      ansible.builtin.dnf:
+        name: python3-pipx
+        state: present
+
+    - name: Ensure pipx global paths are configured
+      ansible.builtin.command:
+        cmd: pipx ensurepath --global
+      changed_when: false
+
+    - name: Install Ansible via pipx globally with dependencies
+      ansible.builtin.command:
+        cmd: pipx install --global --include-deps ansible
+        creates: /usr/local/bin/ansible
+
+    - name: Inject kubernetes Python library
+      ansible.builtin.command:
+        cmd: pipx inject --global ansible kubernetes
+      changed_when: false
+
+    - name: Install Ansible collections globally
+      ansible.builtin.command:
+        cmd: ansible-galaxy collection install {{ item }} -p /usr/share/ansible/collections
+      loop:
+        - hetzner.hcloud
+        - kubernetes.core
+        - ansible.posix
+        - community.general
+        - community.crypto
+      changed_when: false
+
+    - name: Download Helm 3 binary archive
+      ansible.builtin.get_url:
+        url: https://get.helm.sh/helm-v3.20.2-linux-amd64.tar.gz
+        dest: /tmp/helm.tar.gz
+        mode: '0644'
+        force: false
+
+    - name: Extract Helm binary
+      ansible.builtin.unarchive:
+        src: /tmp/helm.tar.gz
+        dest: /usr/local/bin
+        remote_src: true
+        extra_opts:
+          - --strip-components=1
+          - linux-amd64/helm
+        creates: /usr/local/bin/helm
+
+    - name: Remove Helm archive
+      ansible.builtin.file:
+        path: /tmp/helm.tar.gz
+        state: absent
+
+- name: Add Kubernetes repository
+  hosts: bastion
+  tasks:
+
+    - name: Add Kubernetes repo
+      ansible.builtin.yum_repository:
+        name: kubernetes
+        description: Kubernetes Repository
+        baseurl: "https://pkgs.k8s.io/core:/stable:/{{ kubernetes_repo_version }}/rpm/"
+        gpgcheck: true
+        gpgkey: "https://pkgs.k8s.io/core:/stable:/{{ kubernetes_repo_version }}/rpm/repodata/repomd.xml.key"
+        enabled: true
+
+- name: Install kubectl
+  hosts: bastion
+  tasks:
+
+    - name: Install kubectl
+      ansible.builtin.dnf:
+        name: "kubectl-{{ kubernetes_version }}"
+        state: present
+
+- name: Install etcdctl
+  hosts: bastion
+  tasks:
+
+    - name: Download etcd archive
+      ansible.builtin.get_url:
+        url: "https://github.com/etcd-io/etcd/releases/download/v{{ etcd_version }}/etcd-v{{ etcd_version }}-linux-amd64.tar.gz"
+        dest: /tmp/etcd.tar.gz
+        mode: '0644'
+        force: false
+
+    - name: Extract etcdctl binary
+      ansible.builtin.unarchive:
+        src: /tmp/etcd.tar.gz
+        dest: /usr/local/bin
+        remote_src: true
+        extra_opts:
+          - --strip-components=1
+          - "etcd-v{{ etcd_version }}-linux-amd64/etcdctl"
+        creates: /usr/local/bin/etcdctl
+
+    - name: Remove etcd archive
+      ansible.builtin.file:
+        path: /tmp/etcd.tar.gz
+        state: absent
+
+- name: Configure hcloud token for Python daemon
+  hosts: bastion
+  tasks:
+
+    - name: Create hcloud token env file
+      ansible.builtin.copy:
+        dest: /etc/hcloud.env
+        mode: '0600'
+        owner: root
+        group: root
+        content: |
+          HCLOUD_TOKEN={{ hcloud_token }}
+
+- name: Deploy Python DNS sync daemon
+  hosts: bastion
+  tasks:
+
+    - name: Install python3-requests and python3-dotenv
+      ansible.builtin.dnf:
+        name:
+          - python-requests
+          - python-dotenv
+        state: present
+
+    - name: Copy DNS sync script
+      ansible.builtin.copy:
+        src: ../../scripts/hcloud-dns-sync.py
+        dest: /usr/local/bin/hcloud-dns-sync.py
+        mode: '0755'
+        owner: root
+        group: root
+
+    - name: Create systemd service for DNS sync daemon
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/hcloud-dns-sync.service
+        mode: '0644'
+        owner: root
+        group: root
+        content: |
+          [Unit]
+          Description=Hetzner Cloud DNS Sync Daemon
+          Wants=network-online.target
+          After=network-online.target
+
+          [Service]
+          Type=simple
+          EnvironmentFile=/etc/hcloud.env
+          ExecStart=/usr/bin/python3 /usr/local/bin/hcloud-dns-sync.py
+          Restart=always
+          RestartSec=60
+
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: Enable and start DNS sync daemon
+      ansible.builtin.systemd:
+        name: hcloud-dns-sync
+        enabled: true
+        state: started
+        daemon_reload: true
