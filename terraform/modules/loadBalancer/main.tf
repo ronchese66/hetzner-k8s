@@ -2,7 +2,7 @@ resource "hcloud_load_balancer" "k8s_lb" {
   name = "k8sLoadBalancer"
   load_balancer_type = "lb11"
   location = "nbg1"
-  delete_protection = false
+  delete_protection = true
 
   algorithm {
     type = "least_connections"

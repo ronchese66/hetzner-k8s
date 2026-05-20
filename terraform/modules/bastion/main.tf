@@ -17,8 +17,8 @@ resource "hcloud_server" "bastion" {
   location = "nbg1"
 
   backups = false
-  delete_protection = false
-  rebuild_protection = false
+  delete_protection = true
+  rebuild_protection = true
   shutdown_before_deletion = true
 
   ssh_keys = [ var.ssh_key_id ]

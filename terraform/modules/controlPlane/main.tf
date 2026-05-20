@@ -5,8 +5,8 @@ resource "hcloud_server" "control_plane" {
   location = "nbg1"
 
   backups = false
-  delete_protection = false
-  rebuild_protection = false
+  delete_protection = true
+  rebuild_protection = true
   shutdown_before_deletion = true
 
   placement_group_id = var.placement_group_id

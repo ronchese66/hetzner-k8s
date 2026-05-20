@@ -2,7 +2,7 @@
 resource "hcloud_network" "k8s_cluster_network" {
   name = "k8sPrivateNet"
   ip_range = "10.0.0.0/16"
-  delete_protection = false
+  delete_protection = true
 
   labels = {
     managedBy = "terraform"

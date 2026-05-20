@@ -11,8 +11,8 @@ resource "hcloud_server" "worker_nodes" {
 
   ssh_keys = [ var.ssh_key_id ]
 
-  delete_protection = false
-  rebuild_protection = false 
+  delete_protection = true
+  rebuild_protection = true
   shutdown_before_deletion = true
 
   user_data = <<-EOF
