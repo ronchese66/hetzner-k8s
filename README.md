@@ -1,9 +1,9 @@
 # Kubernetes cluster on Hetzner Cloud
-#### kubeadm-based cluster with horizontally scalable workers. Infrastructure managed by Terraform, configuration managed by Ansible.
+#### kubeadm-based cluster. Infrastructure managed by Terraform, configuration managed by Ansible.
 
 ### Architecture
 
-**Single Control Plane, multiple workers, and a dedicated bastion host - all deployed in a single private subnet in Hetzner Cloud.**
+**Single Control Plane, multiple workers, and a dedicated bastion host - all deployed in a single private subnet in Hetzner Cloud. Workers are not autoscaled by Kubernetes. Node scaling is handled externally via Terraform**
 
 *The bastion host is the only publicly reachable server and acts as the single entry point for cluster provisioning, operations, Ansible execution.*
 
@@ -27,24 +27,24 @@
 
 ### Cluster components
 
-**CNI >** *Calico via Tigera Operator. Configured in VXLANCrossSubnet mode, native routing within single subnet, VXLAN encapsulation only between subnets.*\
-**Ingress >** *NGINX Ingress Controller (F5) as DaemonSet*.
+**[CNI](./ansible/playbooks/cluster/calico_cni.yml) >** *Calico via Tigera Operator. Configured in VXLANCrossSubnet mode, native routing within single subnet, VXLAN encapsulation only between subnets.*\
+**[Ingress](./ansible/playbooks/cluster/ingress_nginx.yml) >** *NGINX Ingress Controller (F5) as DaemonSet*.
 - *externalTrafficPolicy: Local*
 - *real client IP preserved via PROXY protocol*
 - *Hetzner LB operates in the TCP Proxy Mode*
 
-**Storage >** *Hetzner CSI driver, **hcloud-volumes** StorageClass, WaitForFirstConsumer policy.*\
-**Cloud integration >** *Hetzner Cloud Controller Manager manages Load Balancer lifecycle and removes the **node.cloudprovider.kubernetes.io/uninitialized** taint on node registration.*\
-**Secrets >** *External Secret Operator (ESO) syncs from Infisical storage. CCM requires the **hcloud** Secret before ESO is available - a bootstrap playbook creates it directly, ownership transferred to ESO post-installation.*\
-**Certificates >** *cert-manager with ClusterIssuer, Let's Encrypt. DNS-01 via CloudFlare API - requires domain NS delegation to CloudFlare. Certs are stored as Kubernetes Secrets and renewed automatically.*\
-**Runtime >** *containerD with Systemd cgroup driver.*\
-**etcd >** *Managed by Kubernetes as a static Pod. Snapshots are taken via etcdctl and written to a dedicated **Hetzner Volume** mounted on the CP node, persisted independently of node lifecycle.*
+**[Storage](./ansible/playbooks/cluster/hetzner_csi.yml) >** *Hetzner CSI driver, **hcloud-volumes** StorageClass, WaitForFirstConsumer policy.*\
+**[Cloud integration](./ansible/playbooks/cluster/hetzner_ccm.yml) >** *Hetzner Cloud Controller Manager manages Load Balancer lifecycle and removes the **node.cloudprovider.kubernetes.io/uninitialized** taint on node registration.*\
+**[Secrets](./ansible/playbooks/cluster/k8s_infisical_eso.yml) >** *External Secret Operator (ESO) syncs from Infisical storage. CCM requires the **hcloud** Secret before ESO is available - a bootstrap playbook creates it directly, ownership transferred to ESO post-installation.*\
+**[Certificates](./ansible/playbooks/cluster/cert_manager.yml) >** *cert-manager with ClusterIssuer, Let's Encrypt. DNS-01 via CloudFlare API - requires domain NS delegation to CloudFlare. Certs are stored as Kubernetes Secrets and renewed automatically.*\
+**[Runtime](./ansible/playbooks/cluster/containerd.yml) >** *containerD with Systemd cgroup driver.*\
+**[etcd](./ansible/playbooks/cluster/etcd_backup_plan.yml) >** *Managed by Kubernetes as a static Pod. Snapshots are taken via etcdctl and written to a dedicated **Hetzner Volume** mounted on the CP node, persisted independently of node lifecycle.*
 
 ### Security
 
 ***Hetzner Cloud Firewall** attached to bastion allows **TCP 22** only on public interface. SSH key auth only, password and root login disabled cluster-wide.*
 
-***nftables** on all nodes with default **drop** policy on input hook. Permits required Kubernetes ports within the private subnet. SSH from **bastion only**.*
+***[nftables](./ansible/templates/nftables/)** on all nodes with default **drop** policy on input hook. Permits required Kubernetes ports within the private subnet. SSH from **bastion only**.*
 
 *Sensitive Ansible variables encrypted with Ansible Vault.*
 
