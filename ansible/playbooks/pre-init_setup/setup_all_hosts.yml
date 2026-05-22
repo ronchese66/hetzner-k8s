@@ -67,6 +67,7 @@
           - pip
           - unzip
           - tar
+          - python3-packaging
         state: present
     
     - name: Install kubernetes lib 
