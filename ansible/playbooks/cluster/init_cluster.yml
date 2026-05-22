@@ -24,7 +24,6 @@
           --pod-network-cidr={{ pod_network_cidr }}
           --service-cidr={{ service_cidr }}
           --cri-socket=unix:///run/containerd/containerd.sock
-          --cloud-provider=external
         creates: /etc/kubernetes/admin.conf
 
 - name: Set up kubectl for ansible user 

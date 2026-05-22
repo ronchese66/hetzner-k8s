@@ -10,14 +10,15 @@
 - import_playbook: cluster/kubelet.yml
 - import_playbook: cluster/kubeadm_kubectl.yml
 
+# Init cluster 
+- import_playbook: cluster/init_cluster.yml
+
 # Bootstrap secrets
 - import_playbook: cluster/bootstrap_secret.yml
 
 # Hetzner CCM 
 - import_playbook: cluster/hetzner_ccm.yml
 
-# Init cluster 
-- import_playbook: cluster/init_cluster.yml
 
 # Post-init
 - import_playbook: cluster/copy_kubeconfig_to_bastion.yml
