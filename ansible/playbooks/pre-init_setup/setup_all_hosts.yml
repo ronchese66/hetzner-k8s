@@ -38,7 +38,7 @@
         enabled: true
 
 - name: Configure system
-  hosts: control_plane:workers
+  hosts: control_plane:worker
   tasks:
 
     - name: Set hostname by hetzner
@@ -65,7 +65,7 @@
         state: present
 
 - name: SELinux 
-  hosts: control_plane:workers
+  hosts: control_plane:worker
   tasks:
 
     - name: Turn SELinux to permissive mode 
@@ -80,7 +80,7 @@
         line: 'SELINUX=permissive'
 
 - name: Disable Swap
-  hosts: control_plane:workers
+  hosts: control_plane:worker
   tasks:
 
     - name: Disable swap immediately
@@ -95,7 +95,7 @@
         replace: '# \1'
 
 - name: Kernel modules 
-  hosts: control_plane:workers
+  hosts: control_plane:worker
   tasks:
 
     - name: Load overlay module 
@@ -116,7 +116,7 @@
           br_netfilter
 
 - name: Sysctl 
-  hosts: control_plane:workers
+  hosts: control_plane:worker
   tasks: 
 
     - name: Set net.bridge.bridge-nf-call-iptables
@@ -143,7 +143,7 @@
         reload: true
 
 - name: SSH handering 
-  hosts: control_plane:workers
+  hosts: control_plane:worker
   tasks:
 
     - name: Disable root login via SSH 
