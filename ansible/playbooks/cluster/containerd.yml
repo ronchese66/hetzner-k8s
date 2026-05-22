@@ -19,7 +19,7 @@
       ansible.builtin.lineinfile:
         path: /etc/containerd/config.toml 
         regexp: '^\s*SystemdCgroup\s*='
-        line: '            SystemdCgroup = true' # 12 spaces!!!
+        line: 'SystemdCgroup = true' 
 
     - name: Restart containerd 
       ansible.builtin.service:
