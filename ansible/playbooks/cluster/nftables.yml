@@ -7,7 +7,7 @@
 #
 
 - name: Disable firewalld on all hosts 
-  hosts: control_plane:workers:bastion
+  hosts: controlPlane:worker:bastion
   tasks:
 
     - name: Disable firewalld
@@ -17,7 +17,7 @@
         enabled: false
 
 - name: Apply nftables config on control plane node
-  hosts: control_plane
+  hosts: controlPlane
   tasks:
 
     - name: Apply nftables 
@@ -29,7 +29,7 @@
         group: root
 
 - name: Apply nftables config on worker nodes
-  hosts: workers
+  hosts: worker
   tasks:
 
     - name: Apply nftables 
@@ -53,7 +53,7 @@
         group: root
 
 - name: Enable and restart nftables 
-  hosts: control_plane:workers:bastion
+  hosts: controlPlane:worker:bastion
   tasks:
 
     - name: Enable and restart

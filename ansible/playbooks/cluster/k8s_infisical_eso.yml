@@ -20,7 +20,7 @@
 
 
 - name: Install ESO 
-  hosts: control_plane
+  hosts: controlPlane
   become: false
   tasks:
 
@@ -72,7 +72,7 @@
         
 
 - name: Configure Infisical 
-  hosts: control_plane
+  hosts: controlPlane
   become: false
   tasks:
 
@@ -117,7 +117,7 @@
                   environmentSlug: "{{ infisical_environment_slug }}"
 
 - name: Transfer hcloud Secret control to ESO 
-  hosts: control_plane
+  hosts: controlPlane
   become: false
   tasks:
 
@@ -168,7 +168,7 @@
       delay: 5
     
 - name: Create ExternalSecret for CloufFlare API Token
-  hosts: control_plane
+  hosts: controlPlane
   become: false
   tasks:
 

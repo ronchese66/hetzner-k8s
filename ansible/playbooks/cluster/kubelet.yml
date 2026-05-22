@@ -1,7 +1,7 @@
 --- 
 
 - name: Install and enable kubelet 
-  hosts: control_plane:workers
+  hosts: controlPlane:worker
   tasks:
 
     - name: Install kubelet 

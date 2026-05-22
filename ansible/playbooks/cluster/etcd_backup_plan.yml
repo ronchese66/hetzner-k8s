@@ -5,7 +5,7 @@
 # etcd endpoint: https://127.0.0.1:2379
 
 - name: Backup etcd
-  hosts: control_plane
+  hosts: controlPlane
   tasks:
 
     - name: Verify backup volume is mounted

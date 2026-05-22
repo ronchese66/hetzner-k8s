@@ -12,7 +12,7 @@
 # kubeconfig: /home/ansible/.kube/config
 
 - name: Init cluster
-  hosts: control_plane
+  hosts: controlPlane
   tasks:
 
     - name: kubeadm init 
@@ -28,7 +28,7 @@
         creates: /etc/kubernetes/admin.conf
 
 - name: Set up kubectl for ansible user 
-  hosts: control_plane
+  hosts: controlPlane
   tasks:
 
     - name: Create .kube dir
@@ -49,7 +49,7 @@
         mode: '0600'
 
 - name: Get join token
-  hosts: control_plane
+  hosts: controlPlane
   tasks:
 
     - name: Generate token
@@ -63,7 +63,7 @@
         join_command: "{{ kubeadm_join_command.stdout }}"
 
 - name: Join worker nodes to cluster 
-  hosts: workers
+  hosts: worker
   tasks:
 
     - name: Join workers 

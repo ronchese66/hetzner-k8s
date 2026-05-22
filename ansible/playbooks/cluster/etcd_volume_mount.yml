@@ -7,7 +7,7 @@
 #
 
 - name: Mount etcd backup volume
-  hosts: control_plane
+  hosts: controlPlane
   tasks:
 
     - name: Get volume info from Hetzner API

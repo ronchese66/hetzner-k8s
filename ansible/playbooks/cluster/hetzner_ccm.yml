@@ -14,7 +14,7 @@
 #
 
 - name: Install Hetzner CCM 
-  hosts: control_plane
+  hosts: controlPlane
   become: false
   tasks:
 

@@ -19,7 +19,7 @@
 #
 
 - name: Install and set up NGINX Ingress Controller
-  hosts: control_plane
+  hosts: controlPlane
   become: false
   tasks:
 

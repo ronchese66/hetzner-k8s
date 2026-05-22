@@ -15,7 +15,7 @@
 
 
 - name: Install cert-manager
-  hosts: control_plane
+  hosts: controlPlane
   become: false
   tasks:
 
@@ -81,7 +81,7 @@
       delay: 5
 
 - name: Configure cert-manager
-  hosts: control_plane
+  hosts: controlPlane
   become: false
   tasks:
 

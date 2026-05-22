@@ -1,7 +1,7 @@
 --- 
 
 - name: Install and set-up containerd 
-  hosts: control_plane:workers
+  hosts: controlPlane:worker
   tasks:
 
     - name: Install containerd 

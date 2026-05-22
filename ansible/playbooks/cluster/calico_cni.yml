@@ -10,7 +10,7 @@
 #
 
 - name: Install Tigera Operator 
-  hosts: control_plane
+  hosts: controlPlane
   become: false 
   tasks:
 
@@ -31,7 +31,7 @@
         wait_timeout: 300
 
 - name: Install Calico CNI 
-  hosts: control_plane
+  hosts: controlPlane
   become: false
   tasks:
 
