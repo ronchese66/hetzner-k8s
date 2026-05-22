@@ -16,12 +16,13 @@
 
 
 - name: Add repositories
-  hosts: control_plane:worker
+  hosts: controlPlane:worker
   tasks:
 
     - name: Add Docker/containerd repo
       ansible.builtin.yum_repository:
         name: docker-ce
+        description: Docker CE repo
         baseurl: https://download.docker.com/linux/centos/$releasever/$basearch/stable
         gpgcheck: true
         module_hotfixes: true
@@ -31,6 +32,7 @@
     - name: Add Kubernetes repo 
       ansible.builtin.yum_repository:
         name: kubernetes 
+        description: Kubernetes repo
         baseurl: "https://pkgs.k8s.io/core:/stable:/{{ kubernetes_repo_version  }}/rpm"
         gpgcheck: true
         module_hotfixes: true
@@ -38,7 +40,7 @@
         enabled: true
 
 - name: Configure system
-  hosts: control_plane:worker
+  hosts: controlPlane:worker
   tasks:
 
     - name: Set hostname by hetzner
@@ -65,7 +67,7 @@
         state: present
 
 - name: SELinux 
-  hosts: control_plane:worker
+  hosts: controlPlane:worker
   tasks:
 
     - name: Turn SELinux to permissive mode 
@@ -80,7 +82,7 @@
         line: 'SELINUX=permissive'
 
 - name: Disable Swap
-  hosts: control_plane:worker
+  hosts: controlPlane:worker
   tasks:
 
     - name: Disable swap immediately
@@ -95,7 +97,7 @@
         replace: '# \1'
 
 - name: Kernel modules 
-  hosts: control_plane:worker
+  hosts: controlPlane:worker
   tasks:
 
     - name: Load overlay module 
@@ -116,7 +118,7 @@
           br_netfilter
 
 - name: Sysctl 
-  hosts: control_plane:worker
+  hosts: controlPlane:worker
   tasks: 
 
     - name: Set net.bridge.bridge-nf-call-iptables
@@ -143,7 +145,7 @@
         reload: true
 
 - name: SSH handering 
-  hosts: control_plane:worker
+  hosts: controlPlane:worker
   tasks:
 
     - name: Disable root login via SSH 
