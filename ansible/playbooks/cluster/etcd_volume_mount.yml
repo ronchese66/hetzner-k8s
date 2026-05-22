@@ -13,6 +13,7 @@
     - name: Get volume info from Hetzner API
       hetzner.hcloud.volume_info:
         name: etcd_backup
+        api_token: "{{ hcloud_token }}"
       register: volume_info
 
     - name: Create mount point

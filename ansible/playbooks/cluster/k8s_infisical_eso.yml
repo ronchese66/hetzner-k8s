@@ -31,6 +31,7 @@
 
     - name: Install ESO via Helm 
       kubernetes.core.helm:
+        kubeconfig: /etc/kubernetes/admin.conf
         name: external-secrets
         chart_ref: external-secrets/external-secrets
         release_namespace: external-secrets
@@ -40,6 +41,7 @@
 
     - name: Wait for ESO Deployment to be available 
       kubernetes.core.k8s_info:
+        kubeconfig: /etc/kubernetes/admin.conf
         kind: Deployment
         name: external-secrets
         namespace: external-secrets
@@ -51,6 +53,7 @@
 
     - name: Wait for ESO webhook to be available
       kubernetes.core.k8s_info:
+        kubeconfig: /etc/kubernetes/admin.conf
         kind: Deployment
         name: external-secrets-webhook
         namespace: external-secrets
@@ -62,6 +65,7 @@
 
     - name: Wait for ClusterSecretStore CRD to be available
       kubernetes.core.k8s_info:
+        kubeconfig: /etc/kubernetes/admin.conf
         kind: CustomResourceDefinition
         name: clustersecretstores.external-secrets.io
       register: crd_status
@@ -78,6 +82,7 @@
 
     - name: Create bootstrap secret with Infisical Universal Auth credentials
       kubernetes.core.k8s:
+        kubeconfig: /etc/kubernetes/admin.conf
         state: present
         definition:
           apiVersion: v1
@@ -92,6 +97,7 @@
 
     - name: Create ClusterSecretStore
       kubernetes.core.k8s:
+        kubeconfig: /etc/kubernetes/admin.conf
         state: present
         definition:
           apiVersion: external-secrets.io/v1
@@ -123,6 +129,7 @@
 
     - name: Delete bootstrap hcloud secret 
       kubernetes.core.k8s:
+        kubeconfig: /etc/kubernetes/admin.conf
         state: absent
         definition:
           apiVersion: v1
@@ -133,6 +140,7 @@
 
     - name: Create ExternalSecret for hcloud Secret
       kubernetes.core.k8s:
+        kubeconfig: /etc/kubernetes/admin.conf
         state: present
         definition:
           apiVersion: external-secrets.io/v1
@@ -157,7 +165,8 @@
                   key: HCLOUD_NETWORK
 
     - name: Wait for hcloud Secret to be recreated by ESO
-      kubernetes.core.k8s_info:
+      kubernetes.core.k8s_info: 
+        kubeconfig: /etc/kubernetes/admin.conf
         kind: Secret
         name: hcloud 
         namespace: kube-system
@@ -174,6 +183,7 @@
 
     - name: Create ExternalSecret for CloufFlare API token
       kubernetes.core.k8s:
+        kubeconfig: /etc/kubernetes/admin.conf
         state: present
         definition:
           apiVersion: external-secrets.io/v1
@@ -196,6 +206,7 @@
 
     - name: Wait for cloudflare-api-token Secret to be created 
       kubernetes.core.k8s_info:
+        kubeconfig: /etc/kubernetes/admin.conf
         kind: Secret
         name: cloudflare-api-token
         namespace: cert-manager

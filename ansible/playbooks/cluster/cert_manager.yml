@@ -26,6 +26,7 @@
 
     - name: Install cert-manager via helm 
       kubernetes.core.helm:
+        kubeconfig: /etc/kubernetes/admin.conf
         name: cert-manager
         chart_ref: jetstack/cert-manager
         release_namespace: cert-manager
@@ -39,6 +40,7 @@
 
     - name: Wait for cert-manager deployment to be available
       kubernetes.core.k8s_info:
+        kubeconfig: /etc/kubernetes/admin.conf
         kind: Deployment 
         name: cert-manager
         namespace: cert-manager
@@ -50,6 +52,7 @@
 
     - name: Wait for cert-manager webhook to be available
       kubernetes.core.k8s_info:
+        kubeconfig: /etc/kubernetes/admin.conf
         kind: Deployment
         name: cert-manager-webhook
         namespace: cert-manager
@@ -61,6 +64,7 @@
 
     - name: Wait for cert-manager cainjector to be available
       kubernetes.core.k8s_info:
+        kubeconfig: /etc/kubernetes/admin.conf
         kind: Deployment
         name: cert-manager-cainjector
         namespace: cert-manager
@@ -72,6 +76,7 @@
 
     - name: Wait for ClusterIssuer CRD to be available
       kubernetes.core.k8s_info:
+        kubeconfig: /etc/kubernetes/admin.conf
         kind: CustomResourceDefinition
         name: clusterissuers.cert-manager.io
       register: crd_status
@@ -87,6 +92,7 @@
 
     - name: Wait for cloudflare-api-token to be exists
       kubernetes.core.k8s_info:
+        kubeconfig: /etc/kubernetes/admin.conf
         kind: Secret
         name: cloudflare-api-token
         namespace: cert-manager
@@ -98,6 +104,7 @@
 
     - name: Create ClusterIssuer for Let's Encrypt prod with DNS01
       kubernetes.core.k8s:
+        kubeconfig: /etc/kubernetes/admin.conf
         state: present
         definition:
           apiVersion: cert-manager.io/v1
@@ -119,6 +126,7 @@
 
     - name: Wait for ClusterIssuer to be ready
       kubernetes.core.k8s_info:
+        kubeconfig: /etc/kubernetes/admin.conf
         kind: ClusterIssuer
         name: letsencrypt-prod
       register: issuer_status

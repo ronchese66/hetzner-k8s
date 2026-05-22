@@ -16,6 +16,7 @@
 
     - name: Apply Tigera manifest
       kubernetes.core.k8s:
+        kubeconfig: /etc/kubernetes/admin.conf
         src: "https://raw.githubusercontent.com/projectcalico/calico/{{ calico_version }}/manifests/tigera-operator.yaml"
         state: present
 
@@ -24,6 +25,7 @@
         kind: Deployment
         name: tigera-operator 
         namespace: tigera-operator
+        kubeconfig: /etc/kubernetes/admin.conf
         wait: true
         wait_condition:
           type: Available
@@ -38,6 +40,7 @@
     - name: Apply Calico installation CR 
       kubernetes.core.k8s:
         state: present
+        kubeconfig: /etc/kubernetes/admin.conf
         definition:
           apiVersion: operator.tigera.io/v1
           kind: Installation 
@@ -54,6 +57,7 @@
 
     - name: Wait for calico daemonset to be ready 
       kubernetes.core.k8s_info:
+        kubeconfig: /etc/kubernetes/admin.conf
         kind: DaemonSet 
         name: calico-node
         namespace: calico-system
@@ -69,6 +73,7 @@
 
     - name: Wait for calico-kube-controllers to be ready 
       kubernetes.core.k8s_info:
+        kubeconfig: /etc/kubernetes/admin.conf
         kind: Deployment
         name: calico-kube-controllers
         namespace: calico-system
@@ -80,6 +85,7 @@
 
     - name: Wait for all nodes to be ready 
       kubernetes.core.k8s_info:
+        kubeconfig: /etc/kubernetes/admin.conf
         kind: Node 
       register: node_status
       until:

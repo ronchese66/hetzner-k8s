@@ -25,6 +25,7 @@
 
     - name: Install NGINX Ingress via Helm
       kubernetes.core.helm:
+        kubeconfig: /etc/kubernetes/admin.conf
         name: nginx-ingress
         chart_ref: oci://ghcr.io/nginx/charts/nginx-ingress
         release_namespace: nginx-ingress
@@ -57,6 +58,7 @@
 
     - name: Wait for NGINX Ingress Controller deployment to be ready 
       kubernetes.core.k8s_info:
+        kubeconfig: /etc/kubernetes/admin.conf
         kind: DaemonSet
         name: nginx-ingress-controller
         namespace: nginx-ingress 

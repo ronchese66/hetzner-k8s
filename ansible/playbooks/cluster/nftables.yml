@@ -6,16 +6,6 @@
 # lb_ip: "10.0.1.10"
 #
 
-- name: Disable firewalld on all hosts 
-  hosts: controlPlane:worker:bastion
-  tasks:
-
-    - name: Disable firewalld
-      ansible.builtin.service:
-        name: firewalld
-        state: stopped
-        enabled: false
-
 - name: Apply nftables config on control plane node
   hosts: controlPlane
   tasks:

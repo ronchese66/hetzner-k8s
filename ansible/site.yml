@@ -16,6 +16,9 @@
 # Bootstrap secrets
 - import_playbook: cluster/bootstrap_secret.yml
 
+# Calico CNI 
+- import_playbook: cluster/calico_cni.yml
+
 # Hetzner CCM 
 - import_playbook: cluster/hetzner_ccm.yml
 
@@ -23,8 +26,6 @@
 # Post-init
 - import_playbook: cluster/copy_kubeconfig_to_bastion.yml
 
-# Calico CNI 
-- import_playbook: cluster/calico_cni.yml
 
 # Hetzner CSI 
 - import_playbook: cluster/hetzner_csi.yml

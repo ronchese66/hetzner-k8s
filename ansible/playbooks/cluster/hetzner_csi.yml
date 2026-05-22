@@ -26,6 +26,7 @@
     - name: Install Hetzner CSI via helm
       kubernetes.core.helm:
         name: hcloud-csi
+        kubeconfig: /etc/kubernetes/admin.conf
         chart_ref: hcloud/hcloud-csi
         release_namespace: kube-system
         chart_version: "{{ csi_version }}"
@@ -39,6 +40,7 @@
 
     - name: Wait for CSI controller be ready
       kubernetes.core.k8s_info:
+        kubeconfig: /etc/kubernetes/admin.conf
         kind: Deployment
         name: hcloud-csi-controller
         namespace: kube-system
@@ -50,6 +52,7 @@
 
     - name: Wait for CSI DaemonSet to be ready
       kubernetes.core.k8s_info:
+        kubeconfig: /etc/kubernetes/admin.conf
         kind: DaemonSet
         name: hcloud-csi-node
         namespace: kube-system

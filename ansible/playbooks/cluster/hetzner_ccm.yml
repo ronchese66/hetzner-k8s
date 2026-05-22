@@ -37,9 +37,11 @@
           - value: networking.networkRoutesEnabled=false
 
     - name: Wait fot CCM Deployment to be ready
+      become: true
       kubernetes.core.k8s_info:
         kind: Deployment
         name: hcloud-cloud-controller-manager
+        kubeconfig: /etc/kubernetes/admin.conf
         namespace: kube-system
         wait: true
         wait_condition:
