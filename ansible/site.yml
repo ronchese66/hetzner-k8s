@@ -1,0 +1,41 @@
+# Infra
+- import_playbook: ops/bastion.yml
+- import_playbook: pre-init-setup/setup_all_hosts.yml
+
+# Firewall
+- import_playbook: cluster/nftables.yml
+
+# Runtime and main components
+- import_playbook: cluster/containerd.yml
+- import_playbook: cluster/kubelet.yml
+- import_playbook: cluster/kubeadm_kubectl.yml
+
+# Bootstrap secrets
+- import_playbook: cluster/bootstrap_secret.yml
+
+# Hetzner CCM 
+- import_playbook: cluster/hetzner_ccm.yml
+
+# Init cluster 
+- import_playbook: cluster/init_cluster.yml
+
+# Post-init
+- import_playbook: cluster/copy_kubeconfig_to_bastion.yml
+
+# Calico CNI 
+- import_playbook: cluster/calico_cni.yml
+
+# Hetzner CSI 
+- import_playbook: cluster/hetzner_csi.yml
+
+# ESO 
+- import_playbook: cluster/k8s_infisical_eso.yml
+
+# cert-manager
+- import_playbook: cluster/cert_manager.yml
+
+# NGINX Ingress Controller
+- import_playbook: cluster/ingress_nginx.yml
+
+# etcd
+- import_playbook: cluster/etcd_volume_mount.yml

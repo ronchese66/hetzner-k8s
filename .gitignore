@@ -3,5 +3,4 @@
 *.tfstate
 *.hcl
 *.backup
-secrets.yml
 

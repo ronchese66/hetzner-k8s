@@ -38,6 +38,8 @@
           - net-tools
           - bind-utils
           - tcpdump
+          - unzip
+          - tar
         state: present
 
 - name: SSH hardening
@@ -67,29 +69,29 @@
   hosts: bastion
   tasks:
 
-    - name: Install pipx
+    - name: Install pip 
       ansible.builtin.dnf:
-        name: python3-pipx
+        name:
+          - python3
+          - python3-pip
+          - python3-packaging
         state: present
 
-    - name: Ensure pipx global paths are configured
-      ansible.builtin.command:
-        cmd: pipx ensurepath --global
-      changed_when: false
+    - name: Install Ansible via pip globally with dependencies
+      ansible.builtin.pip:
+        name:
+          - ansible
+          - kubernetes
+        extra_args: --break-system-packages
 
-    - name: Install Ansible via pipx globally with dependencies
-      ansible.builtin.command:
-        cmd: pipx install --global --include-deps ansible
-        creates: /usr/local/bin/ansible
-
-    - name: Inject kubernetes Python library
-      ansible.builtin.command:
-        cmd: pipx inject --global ansible kubernetes
-      changed_when: false
+    - name: Check ansible binary exists
+      ansible.builtin.stat:
+        path: /usr/local/bin/ansible
 
     - name: Install Ansible collections globally
+      become: false
       ansible.builtin.command:
-        cmd: ansible-galaxy collection install {{ item }} -p /usr/share/ansible/collections
+        cmd: /usr/local/bin/ansible-galaxy collection install {{ item }} -p /usr/share/ansible/collections
       loop:
         - hetzner.hcloud
         - kubernetes.core
@@ -139,7 +141,7 @@
 
     - name: Install kubectl
       ansible.builtin.dnf:
-        name: "kubectl-{{ kubernetes_version }}"
+        name: "kubectl"
         state: present
 
 - name: Install etcdctl
@@ -186,11 +188,11 @@
   tasks:
 
     - name: Install python3-requests and python3-dotenv
-      ansible.builtin.dnf:
+      ansible.builtin.pip:
         name:
-          - python-requests
+          - requests
           - python-dotenv
-        state: present
+        extra_args: --break-system-packages
 
     - name: Copy DNS sync script
       ansible.builtin.copy:

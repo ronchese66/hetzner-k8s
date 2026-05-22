@@ -1,5 +1,5 @@
 plugin: hetzner.hcloud.hcloud
-token: "{{ hcloud_token }}"
+token: "{{ lookup('env', 'HCLOUD_TOKEN') }}"
 connect_with: private_ipv4
 
 groups:
