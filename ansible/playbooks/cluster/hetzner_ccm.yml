@@ -29,6 +29,7 @@
         chart_ref: hcloud/hcloud-cloud-controller-manager
         release_namespace: kube-system
         chart_version: "{{ ccm_version }}"
+        kubeconfig: /etc/kubernetes/admin.conf
         wait: true
         set_values:
           - value: networking.enabled=true
