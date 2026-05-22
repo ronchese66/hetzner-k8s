@@ -3,9 +3,9 @@ token: "{{ lookup('env', 'HCLOUD_TOKEN') }}"
 connect_with: private_ipv4
 
 groups:
-  control_plane: "labels.get('nodeType') == 'controlPlane'"
-  workers: "labels.get('nodeType') == 'worker'"
-  bastion: "labels.get('nodeType') == 'bastion'"
+  control_plane: "labels.get == 'controlPlane'"
+  workers: "labels.get == 'worker'"
+  bastion: "labels.get == 'bastion'"
 
 compose:
   ansible_user: ansible

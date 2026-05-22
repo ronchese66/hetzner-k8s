@@ -16,7 +16,7 @@
 
 
 - name: Add repositories
-  hosts: control_plane:workers
+  hosts: control_plane:worker
   tasks:
 
     - name: Add Docker/containerd repo
