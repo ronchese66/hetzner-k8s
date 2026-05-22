@@ -6,10 +6,10 @@
 
     - name: Install kubeadm 
       ansible.builtin.dnf:
-        name: "kubeadm-{{ kubernetes_version  }}" # 1.35
+        name: "kubeadm"
         state: present 
 
     - name: Install kubectl 
       ansible.builtin.dnf:
-        name: "kubectl-{{ kubernetes_version  }}"
+        name: "kubectl"
         state: present 
