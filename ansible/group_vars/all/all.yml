@@ -4,6 +4,10 @@ ansible_become: true
 
 # versions
 
+# Helm 
+helm_version: "v3.16.2"
+helm_url: "https://get.helm.sh/helm-{{ helm_version }}-linux-amd64.tar.gz"
+
 # Kubernetes
 kubernetes_repo_version: "v1.35"
 kubernetes_version: "1.35"
