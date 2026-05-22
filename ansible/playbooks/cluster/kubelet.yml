@@ -6,7 +6,7 @@
 
     - name: Install kubelet 
       ansible.builtin.dnf:
-        name: "kubelet-{{ kubernetes_version  }}" # 1.35
+        name: "kubelet"
         state: present
 
     - name: Enable and start kubelet 
