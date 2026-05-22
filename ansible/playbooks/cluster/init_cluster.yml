@@ -67,5 +67,5 @@
 
     - name: Join workers 
       ansible.builtin.command:
-        cmd: "{{ hostvars[groups['control_plane'][0]]['join_command'] }}"
+        cmd: "{{ hostvars[groups['controlPlane'][0]]['join_command'] }}"
         creates: /etc/kubernetes/kubelet.conf
