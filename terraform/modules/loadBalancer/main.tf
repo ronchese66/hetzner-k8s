@@ -20,7 +20,6 @@ resource "hcloud_load_balancer_network" "k8s_lb_network" {
   
   load_balancer_id = hcloud_load_balancer.k8s_lb.id
   network_id = var.network_id
-  subnet_id = var.subnet_id
 }  
 
 resource "hcloud_load_balancer_service" "lb_http_service" {
