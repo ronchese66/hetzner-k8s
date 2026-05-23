@@ -7,6 +7,11 @@ resource "hcloud_server" "worker_nodes" {
   location = "nbg1"
   backups = false
 
+  public_net {
+    ipv4_enabled = false
+    ipv6_enabled = false
+}
+
   placement_group_id = var.placement_group_id
 
   ssh_keys = [ var.ssh_key_id ]

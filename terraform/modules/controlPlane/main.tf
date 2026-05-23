@@ -9,6 +9,11 @@ resource "hcloud_server" "control_plane" {
   rebuild_protection = true
   shutdown_before_deletion = true
 
+  public_net {
+    ipv4_enabled = false
+    ipv6_enabled = false
+  }
+
   placement_group_id = var.placement_group_id
 
   ssh_keys = [ var.ssh_key_id ]
