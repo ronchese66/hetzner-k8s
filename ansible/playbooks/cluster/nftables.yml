@@ -6,6 +6,17 @@
 # lb_ip: "10.0.1.10"
 #
 
+- name: Disable and mask firewalld
+  hosts: controlPlane:worker:bastion
+  tasks:
+
+    - name: Disable and mask
+      ansible.builtin.systemd:
+        name: firewalld
+        state: stopped
+        enabled: false
+        masked: true
+
 - name: Apply nftables config on control plane node
   hosts: controlPlane
   tasks:
