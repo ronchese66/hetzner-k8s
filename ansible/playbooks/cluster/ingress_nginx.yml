@@ -34,7 +34,7 @@
         wait: true
         values:
           controller:
-            kind: daemonset
+            kind: DaemonSet
             readOnlyRootFilesystem: true
             service:
               type: NodePort
