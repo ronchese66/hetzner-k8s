@@ -1,0 +1,60 @@
+---
+- name: Configure private node egress
+  hosts: controlPlane:worker
+  become: true
+
+  tasks:
+    - name: Remove previous DHCP hook
+      ansible.builtin.file:
+        path: /etc/dhcp/dhclient-exit-hooks.d/99-private-egress
+        state: absent
+
+    - name: Configure DNS
+      ansible.builtin.copy:
+        dest: /etc/resolv.conf
+        owner: root
+        group: root
+        mode: "0644"
+        content: |
+          nameserver 185.12.64.1
+          nameserver 185.12.64.2
+
+    - name: Configure persistent default route
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/private-egress.service
+        owner: root
+        group: root
+        mode: "0644"
+        content: |
+          [Unit]
+          Description=Configure private node default route
+          Requires=hc-net-ifup@eth0.service
+          After=hc-net-ifup@eth0.service
+
+          [Service]
+          Type=oneshot
+          ExecStart=/usr/sbin/ip -4 route replace default via 10.0.0.1 dev eth0
+          RemainAfterExit=yes
+
+          [Install]
+          WantedBy=multi-user.target
+      register: route_service
+
+    - name: Enable and start default route service
+      ansible.builtin.systemd_service:
+        name: private-egress.service
+        daemon_reload: true
+        enabled: true
+        state: started
+
+    - name: Verify default route
+      ansible.builtin.command:
+        cmd: ip -4 route get 1.1.1.1
+      register: route_check
+      changed_when: false
+      failed_when: "'via 10.0.0.1 dev eth0' not in route_check.stdout"
+
+    - name: Verify DNS
+      ansible.builtin.command:
+        cmd: getent ahostsv4 registry.k8s.io
+      changed_when: false
