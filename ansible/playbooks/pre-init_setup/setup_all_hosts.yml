@@ -70,6 +70,11 @@
           - python3-packaging
         state: present
 
+    - name: Install Kubernetes Python library
+      ansible.builtin.pip:
+        name: kubernetes
+        extra_args: --break-system-packages
+
 - name: Install Helm 
   hosts: controlPlane
   tasks:
