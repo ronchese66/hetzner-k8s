@@ -3,7 +3,7 @@ resource "hcloud_volume" "etcd_backup_volume" {
   size = 10
   format = "ext4"
   automount = false
-  delete_protection = true
+  delete_protection = false
   server_id = var.server_id
 
   labels = {
