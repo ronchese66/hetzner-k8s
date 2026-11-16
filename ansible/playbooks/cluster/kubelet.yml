@@ -9,8 +9,15 @@
         name: "kubelet"
         state: present
 
+    - name: Configure external cloud provider
+      ansible.builtin.lineinfile:
+        path: /etc/sysconfig/kubelet
+        regexp: '^KUBELET_EXTRA_ARGS='
+        line: 'KUBELET_EXTRA_ARGS=--cloud-provider=external --provider-id=hcloud://{{ hcloud_id }}'
+      register: kubelet_config
+
     - name: Enable and start kubelet 
       ansible.builtin.service:
         name: kubelet
         enabled: true
-        state: started 
+        state: "{{ 'restarted' if kubelet_config.changed else 'started' }}"

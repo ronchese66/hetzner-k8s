@@ -34,7 +34,7 @@
         set_values:
           - value: networking.enabled=true
           - value: "networking.clusterCIDR={{ pod_network_cidr }}"
-          - value: networking.networkRoutesEnabled=false
+          - value: env.HCLOUD_NETWORK_ROUTES_ENABLED.value=false
 
     - name: Wait fot CCM Deployment to be ready
       become: true
