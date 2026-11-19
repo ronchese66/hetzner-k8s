@@ -1,0 +1,42 @@
+stage: bootstrap
+
+replicaCount: 2
+
+service:
+  port: 8000
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 256Mi
+  limits:
+    cpu: "2"
+    memory: 1Gi
+
+image:
+  repository: docker.io/yronchese/healthchecks
+  digest: sha256:b7c0580abd61d3949d7cb03f8f2650596118f8dcbd1ed81890640fec375bece2
+
+ingress:
+  clusterIssuer: letsencrypt-prod
+
+config:
+  DEBUG: "False"
+
+  DB: "postgres"
+  DB_HOST: "healthchecks-db-rw.healthchecks.svc.cluster.local"
+  DB_PORT: "5432"
+  DB_NAME: "healthchecks"
+  DB_USER: "healthchecks"
+  DB_SSLMODE: "verify-full"
+  PGSSLROOTCERT: "/etc/postgresql-ca/ca.crt"
+
+  SITE_ROOT: "https://ronchese.pp.ua"
+  SECURE_PROXY_SSL_HEADER: "HTTP_X_FORWARDED_PROTO,https"
+  ALLOWED_HOSTS: "ronchese.pp.ua"
+
+  REGISTRATION_OPEN: "False"
+  WEBHOOKS_ENABLED: "False"
+
+  SECRET_KEY_FILE: "/run/secrets/healthchecks/secret-key"
+  DB_PASSWORD_FILE: "/run/secrets/healthchecks/db-password"

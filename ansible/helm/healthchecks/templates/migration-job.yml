@@ -1,0 +1,76 @@
+
+{{- if eq .Values.stage "app" }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "healthchecks.fullname" . }}-migrate
+  labels:
+    {{- include "healthchecks.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": pre-upgrade
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 1
+  template:
+    metadata:
+      labels:
+        {{- include "healthchecks.labels" . | nindent 8 }}
+        app.kubernetes.io/component: migration
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: migrate
+          image: "{{ .Values.image.repository }}@{{ .Values.image.digest }}"
+          command:
+            - python
+            - manage.py
+            - migrate
+            - --noinput
+          envFrom:
+            - configMapRef:
+                name: {{ include "healthchecks.fullname" . }}-config
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: app-secrets
+              mountPath: /run/secrets/healthchecks
+              readOnly: true
+            - name: postgresql-ca
+              mountPath: /etc/postgresql-ca
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: app-secrets
+          secret:
+            secretName: {{ include "healthchecks.fullname" . }}-secrets
+            defaultMode: 0440
+            items:
+              - key: secret-key
+                path: secret-key
+              - key: db-password
+                path: db-password
+        - name: postgresql-ca
+          secret:
+            secretName: healthchecks-db-ca
+            items:
+              - key: ca.crt
+                path: ca.crt
+        - name: tmp
+          emptyDir:
+            sizeLimit: 64Mi
+{{- end }}

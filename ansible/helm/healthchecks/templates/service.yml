@@ -1,0 +1,21 @@
+{{- if eq .Values.stage "app" }}
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "healthchecks.fullname" . }}
+  labels:
+    {{- include "healthchecks.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: healthchecks
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: web
+  ports:
+    - name: http
+      port: {{ .Values.service.port }}
+      targetPort: http
+      protocol: TCP
+
+{{- end }}
