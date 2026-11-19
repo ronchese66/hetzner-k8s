@@ -48,4 +48,23 @@ ingress_nginx_version: "2.5.1"
 # etcd and etcdctl version
 etcd_version: "3.6.6"
 
+# CloudNativePG Operator
+cnpg_chart_version: "0.29.2"
+
+# PostgreSQL params
+postgresql_cluster_name: "healthchecks-db"
+postgresql_namespace: "healthchecks"
+postgresql_image: "ghcr.io/cloudnative-pg/postgresql:17.12-202611160820-system-bookworm"
+postgresql_instances: 2
+postgresql_database: "healthchecks"
+postgresql_owner: "healthchecks"
+postgresql_storage_class: "hcloud-volumes"
+postgresql_storage_size: "10Gi"
+postgresql_resources:
+  requests:
+    cpu: "100m"
+    memory: "256Mi"
+  limits:
+    cpu: "1"
+    memory: "1Gi"
 
