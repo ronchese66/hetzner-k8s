@@ -1,0 +1,73 @@
+- name: Deploy PostgreSQL via CloudNativePG
+  hosts: controlPlane
+  become: false
+  tasks:
+    - name: Create application namespace
+      kubernetes.core.k8s:
+        kubeconfig: /etc/kubernetes/admin.conf
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: "{{ postgresql_namespace }}"
+
+    - name: Create PostgreSQL ExternalSecret
+      kubernetes.core.k8s:
+        kubeconfig: /etc/kubernetes/admin.conf
+        state: present
+        definition:
+          apiVersion: external-secrets.io/v1
+          kind: ExternalSecret
+          metadata:
+            name: postgres-app
+            namespace: "{{ postgresql_namespace }}"
+          spec:
+            refreshInterval: 1h
+            secretStoreRef:
+              name: infisical-store
+              kind: ClusterSecretStore
+            target:
+              name: postgres-app
+              creationPolicy: Owner
+              template:
+                type: kubernetes.io/basic-auth
+            data:
+              - secretKey: username
+                remoteRef:
+                  key: DB_USER
+              - secretKey: password
+                remoteRef:
+                  key: DB_PASSWORD
+
+    - name: Wait for PostgreSQL ExternalSecret
+      kubernetes.core.k8s_info:
+        kubeconfig: /etc/kubernetes/admin.conf
+        api_version: external-secrets.io/v1
+        kind: ExternalSecret
+        name: postgres-app
+        namespace: "{{ postgresql_namespace }}"
+        wait: true
+        wait_condition:
+          type: Ready
+          status: "True"
+        wait_timeout: 300
+
+    - name: Create PostgreSQL Cluster
+      kubernetes.core.k8s:
+        kubeconfig: /etc/kubernetes/admin.conf
+        state: present
+        definition: "{{ lookup('template', playbook_dir ~ '/../../templates/postgresql/cluster.yml.j2') | from_yaml }}"
+
+    - name: Wait for PostgreSQL Cluster
+      kubernetes.core.k8s_info:
+        kubeconfig: /etc/kubernetes/admin.conf
+        api_version: postgresql.cnpg.io/v1
+        kind: Cluster
+        name: "{{ postgresql_cluster_name }}"
+        namespace: "{{ postgresql_namespace }}"
+        wait: true
+        wait_condition:
+          type: Ready
+          status: "True"
+        wait_timeout: 900

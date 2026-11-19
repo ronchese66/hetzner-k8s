@@ -1,0 +1,51 @@
+- name: Install CloudNativePG Operator
+  hosts: controlPlane
+  become: false
+  tasks:
+
+    - name: Add CloudNativePG Helm repo
+      kubernetes.core.helm_repository:
+        repo_name: cnpg
+        repo_url: https://cloudnative-pg.github.io/charts
+
+    - name: Install CloudNativePG via Helm
+      kubernetes.core.helm:
+        binary_path: /usr/local/sbin/helm
+        kubeconfig: /etc/kubernetes/admin.conf
+        name: cnpg
+        chart_ref: cnpg/cloudnative-pg
+        chart_version: "{{ cnpg_chart_version }}"
+        release_namespace: cnpg-system
+        create_namespace: true
+        wait: true
+        timeout: 10m0s
+        values:
+          image:
+            tag: "1.30.2"
+          crds:
+            create: true
+
+    - name: Wait for CloudNativePG Cluster CRD
+      kubernetes.core.k8s_info:
+        kubeconfig: /etc/kubernetes/admin.conf
+        api_version: apiextensions.k8s.io/v1
+        kind: CustomResourceDefinition
+        name: clusters.postgresql.cnpg.io
+        wait: true
+        wait_condition:
+          type: Established
+          status: "True"
+        wait_timeout: 300
+
+    - name: Wait for CloudNativePG Controller
+      kubernetes.core.k8s_info:
+        kubeconfig: /etc/kubernetes/admin.conf
+        api_version: apps/v1
+        kind: Deployment
+        name: cnpg-cloudnative-pg
+        namespace: cnpg-system
+        wait: true
+        wait_condition:
+          type: Available
+          status: "True"
+        wait_timeout: 300

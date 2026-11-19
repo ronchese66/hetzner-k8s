@@ -25,6 +25,7 @@
 
     - name: Install NGINX Ingress via Helm
       kubernetes.core.helm:
+        binary_path: /usr/local/sbin/helm
         kubeconfig: /etc/kubernetes/admin.conf
         name: nginx-ingress
         chart_ref: oci://ghcr.io/nginx/charts/nginx-ingress
@@ -34,7 +35,7 @@
         wait: true
         values:
           controller:
-            kind: DaemonSet
+            kind: daemonset
             readOnlyRootFilesystem: true
             service:
               type: NodePort

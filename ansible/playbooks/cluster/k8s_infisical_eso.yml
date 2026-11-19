@@ -24,8 +24,19 @@
   become: false
   tasks:
 
+    - name: Create cert-manager namespace
+      kubernetes.core.k8s:
+        kubeconfig: /etc/kubernetes/admin.conf
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: cert-manager
+
     - name: Add ESO Helm repo 
       kubernetes.core.helm_repository:
+        binary_path: /usr/local/sbin/helm
         repo_name: external-secrets
         repo_url: https://charts.external-secrets.io
 
