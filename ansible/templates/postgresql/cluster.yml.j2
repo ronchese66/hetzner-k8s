@@ -1,0 +1,23 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: "{{ postgresql_cluster_name }}"
+  namespace: "{{ postgresql_namespace }}"
+spec:
+  instances: {{ postgresql_instances }}
+  imageName: "{{ postgresql_image }}"
+  enableSuperuserAccess: false
+
+  bootstrap:
+    initdb:
+      database: "{{ postgresql_database }}"
+      owner: "{{ postgresql_owner }}"
+      secret:
+        name: postgres-app
+
+  storage:
+    storageClass: "{{ postgresql_storage_class }}"
+    size: "{{ postgresql_storage_size }}"
+
+  resources:
+    {{ postgresql_resources | to_nice_yaml(indent=2) | indent(4) }}
