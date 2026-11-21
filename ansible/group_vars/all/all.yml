@@ -21,6 +21,7 @@ private_subnet: "10.0.1.0/24"
 bastion_ip: "10.0.1.5"
 control_plane_ip: "10.0.1.2"
 lb_ip: "10.0.1.10"
+monitoring_ip: "10.0.1.7"
 
 
 # Infisical ESO auth: SEE group_vars/all/secrets.yml

@@ -1,0 +1,40 @@
+flush ruleset
+
+table inet filter {
+
+    chain input {
+        type filter hook input priority filter; policy drop;
+
+        iifname "lo" accept
+        ct state invalid drop
+        ct state established,related accept
+
+        udp sport 67 udp dport 68 accept
+
+        ip saddr {{ bastion_ip }} tcp dport { 22, 3000 } accept
+        ip saddr {{ control_plane_ip }} tcp dport 3100 accept
+
+        ip protocol icmp ip saddr {{ private_subnet }} accept
+
+        limit rate 5/minute log prefix "nft-monitoring-drop: "
+    }
+
+    chain forward {
+        type filter hook forward priority filter; policy drop;
+    }
+
+    chain output {
+        type filter hook output priority filter; policy drop;
+
+        oifname "lo" accept
+        ct state invalid drop
+        ct state established,related accept
+
+        udp sport 68 udp dport 67 accept
+
+        udp dport 53 accept
+        tcp dport { 53, 80, 443 } accept
+
+        ip protocol icmp ip daddr {{ private_subnet }} accept
+    }
+}

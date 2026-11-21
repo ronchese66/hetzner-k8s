@@ -22,13 +22,13 @@ table inet nat_gateway_filter {
 
         ct state invalid drop
 
-        iifname "{{ nat_private_interface }}" oifname "{{ nat_public_interface }}" ip saddr { 10.0.1.2, 10.0.1.3, 10.0.1.4 } ct state new tcp dport { 53, 80, 443 } accept
+        iifname "{{ nat_private_interface }}" oifname "{{ nat_public_interface }}" ip saddr { 10.0.1.2, 10.0.1.3, 10.0.1.4, 10.0.1.7 } ct state new tcp dport { 53, 80, 443 } accept
 
-        iifname "{{ nat_private_interface }}" oifname "{{ nat_public_interface }}" ip saddr { 10.0.1.2, 10.0.1.3, 10.0.1.4 } ct state new udp dport 53 accept
+        iifname "{{ nat_private_interface }}" oifname "{{ nat_public_interface }}" ip saddr { 10.0.1.2, 10.0.1.3, 10.0.1.4, 10.0.1.7 } ct state new udp dport 53 accept
 
-        iifname "{{ nat_private_interface }}" oifname "{{ nat_public_interface }}" ip saddr { 10.0.1.2, 10.0.1.3, 10.0.1.4 } ct state established,related accept
+        iifname "{{ nat_private_interface }}" oifname "{{ nat_public_interface }}" ip saddr { 10.0.1.2, 10.0.1.3, 10.0.1.4, 10.0.1.7 } ct state established,related accept
 
-        iifname "{{ nat_public_interface }}" oifname "{{ nat_private_interface }}" ip daddr { 10.0.1.2, 10.0.1.3, 10.0.1.4 } ct state established,related accept
+        iifname "{{ nat_public_interface }}" oifname "{{ nat_private_interface }}" ip daddr { 10.0.1.2, 10.0.1.3, 10.0.1.4, 10.0.1.7 } ct state established,related accept
     }
 
     chain output {
@@ -40,6 +40,6 @@ table ip nat_gateway_translation {
     chain postrouting {
         type nat hook postrouting priority srcnat; policy accept;
 
-        oifname "{{ nat_public_interface }}" ip saddr { 10.0.1.2, 10.0.1.3, 10.0.1.4 } masquerade
+        oifname "{{ nat_public_interface }}" ip saddr { 10.0.1.2, 10.0.1.3, 10.0.1.4, 10.0.1.7 } masquerade
     }
 }
