@@ -17,7 +17,8 @@
 | Worker-01      | 10.0.1.3  |
 | Worker-02      | 10.0.1.4  |
 | Load Balancer  | 10.0.1.10 |
-| NAT Gateway    | 10.0.1.6  
+| NAT Gateway    | 10.0.1.6  |
+| Monitoring     | 10.0.1.7  |
 
 | Scope  | CIDR |
 |  ------------- | -------------  |
