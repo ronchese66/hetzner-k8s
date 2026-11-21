@@ -1,0 +1,36 @@
+- name: Mount Kubernetes API audit volume
+  hosts: controlPlane
+
+  tasks:
+    - name: Get volume information
+      hetzner.hcloud.volume_info:
+        name: k8sAuditLogs
+        api_token: "{{ hcloud_token }}"
+      register: volume_info
+
+    - name: Verify volume
+      ansible.builtin.assert:
+        that:
+          - volume_info.hcloud_volume_info | length == 1
+          - volume_info.hcloud_volume_info[0].size == 20
+
+    - name: Create mount point
+      ansible.builtin.file:
+        path: /var/log/kubernetes/audit
+        state: directory
+        owner: root
+        group: root
+        mode: "0700"
+
+    - name: Mount audit volume
+      ansible.posix.mount:
+        path: /var/log/kubernetes/audit
+        src: "{{ volume_info.hcloud_volume_info[0].linux_device }}"
+        fstype: ext4
+        opts: defaults,nofail
+        state: mounted
+
+    - name: Verify mount
+      ansible.builtin.command:
+        cmd: mountpoint -q /var/log/kubernetes/audit
+      changed_when: false
