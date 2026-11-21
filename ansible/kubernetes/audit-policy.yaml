@@ -1,0 +1,73 @@
+apiVersion: audit.k8s.io/v1
+kind: Policy
+omitStages:
+  - RequestReceived
+omitManagedFields: true
+rules:
+  - level: Metadata
+    resources:
+      - group: ""
+        resources: ["secrets"]
+      - group: authentication.k8s.io
+        resources: ["tokenreviews"]
+
+  - level: None
+    nonResourceURLs:
+      - /healthz*
+      - /livez*
+      - /readyz*
+      - /version
+
+  - level: None
+    resources:
+      - group: coordination.k8s.io
+        resources: ["leases"]
+
+  - level: None
+    userGroups: ["system:nodes"]
+    verbs: ["get", "list", "watch"]
+    resources:
+      - group: ""
+        resources: ["nodes", "nodes/status", "pods", "pods/status", "services"]
+      - group: storage.k8s.io
+        resources: ["csinodes"]
+
+  - level: None
+    users: ["system:serviceaccount:kube-system:kube-proxy"]
+    verbs: ["get", "list", "watch"]
+    resources:
+      - group: ""
+        resources: ["services", "endpoints", "nodes"]
+      - group: discovery.k8s.io
+        resources: ["endpointslices"]
+
+  - level: None
+    users: ["system:kube-controller-manager", "system:kube-scheduler"]
+    verbs: ["get", "list", "watch"]
+
+  - level: None
+    users: ["system:kube-controller-manager", "system:kube-scheduler"]
+    verbs: ["get", "update"]
+    namespaces: ["kube-system"]
+    resources:
+      - group: ""
+        resources: ["endpoints", "configmaps"]
+
+  - level: Metadata
+    resources:
+      - group: ""
+        resources: ["pods/exec", "pods/attach", "pods/portforward"]
+
+  - level: Request
+    verbs: ["create", "update", "patch", "delete"]
+    resources:
+      - group: rbac.authorization.k8s.io
+        resources: ["roles", "rolebindings", "clusterroles", "clusterrolebindings"]
+      - group: ""
+        resources: ["pods", "serviceaccounts/token"]
+      - group: apps
+        resources: ["deployments", "daemonsets", "statefulsets"]
+      - group: batch
+        resources: ["jobs", "cronjobs"]
+
+  - level: Metadata
