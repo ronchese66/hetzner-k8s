@@ -1,0 +1,102 @@
+- name: Install & Configure Loki
+  hosts: monitoring
+  tasks:
+
+    - name: Configure Grafana repository
+      ansible.builtin.yum_repository:
+        name: grafana
+        description: Grafana
+        baseurl: https://rpm.grafana.com
+        enabled: true
+        gpgcheck: true
+        repo_gpgcheck: true
+        gpgkey: https://rpm.grafana.com/gpg.key
+        sslverify: true
+
+    - name: Install Loki
+      ansible.builtin.dnf:
+        name: loki-3.7.10-1
+        state: present
+
+    - name: Ensure Loki system user
+      ansible.builtin.user:
+        name: loki
+        system: true
+        create_home: false
+        shell: /sbin/nologin
+
+    - name: Create Loki storage directory
+      ansible.builtin.file:
+        path: /var/lib/loki
+        state: directory
+        owner: loki
+        group: loki
+        mode: "0750"
+
+    - name: Create Loki configuration directory
+      ansible.builtin.file:
+        path: /etc/loki
+        state: directory
+        owner: root
+        group: loki
+        mode: "0750"
+
+    - name: Install Loki configuration
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/loki.yaml"
+        dest: /etc/loki/loki.yaml
+        owner: root
+        group: loki
+        mode: "0640"
+      notify: Restart Loki
+
+    - name: Validate Loki configuration
+      ansible.builtin.command:
+        cmd: /usr/bin/loki -config.file=/etc/loki/loki.yaml -verify-config
+      changed_when: false
+
+    - name: Create systemd override directory
+      ansible.builtin.file:
+        path: /etc/systemd/system/loki.service.d
+        state: directory
+        mode: "0755"
+
+    - name: Configure Loki systemd service
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/loki.service.d/override.conf
+        owner: root
+        group: root
+        mode: "0644"
+        content: |
+          [Service]
+          User=loki
+          Group=loki
+          ExecStart=
+          ExecStart=/usr/bin/loki -config.file=/etc/loki/loki.yaml -target=all
+      notify: Restart Loki
+
+    - name: Apply configuration changes
+      ansible.builtin.meta: flush_handlers
+
+    - name: Enable and start Loki
+      ansible.builtin.systemd_service:
+        name: loki
+        enabled: true
+        state: started
+        daemon_reload: true
+
+    - name: Verify Loki readiness
+      ansible.builtin.uri:
+        url: http://10.0.1.7:3100/ready
+        status_code: 200
+      register: loki_ready
+      until: loki_ready.status == 200
+      retries: 18
+      delay: 5
+
+  handlers:
+    - name: Restart Loki
+      ansible.builtin.systemd_service:
+        name: loki
+        state: restarted
+        daemon_reload: true

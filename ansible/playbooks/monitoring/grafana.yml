@@ -1,0 +1,78 @@
+- name: Install and configure Grafana
+  hosts: monitoring
+  tasks:
+  
+    - name: Install Grafana OSS 13.3.1
+      ansible.builtin.dnf:
+        name: https://dl.grafana.com/grafana/release/13.3.1/grafana_13.3.1_42849527790_linux_amd64.rpm
+        state: present
+
+    - name: Configure Grafana private address
+      community.general.ini_file:
+        path: /etc/grafana/grafana.ini
+        section: server
+        option: http_addr
+        value: "10.0.1.7"
+        mode: "0640"
+      notify: Restart Grafana
+
+    - name: Configure Grafana HTTP port
+      community.general.ini_file:
+        path: /etc/grafana/grafana.ini
+        section: server
+        option: http_port
+        value: "3000"
+        mode: "0640"
+      notify: Restart Grafana
+
+    - name: Disable anonymous access
+      community.general.ini_file:
+        path: /etc/grafana/grafana.ini
+        section: auth.anonymous
+        option: enabled
+        value: "false"
+        mode: "0640"
+      notify: Restart Grafana
+
+    - name: Provision Loki data source
+      ansible.builtin.copy:
+        dest: /etc/grafana/provisioning/datasources/loki.yaml
+        owner: root
+        group: grafana
+        mode: "0640"
+        content: |
+          apiVersion: 1
+
+          datasources:
+            - name: Loki
+              uid: loki
+              type: loki
+              access: proxy
+              url: http://10.0.1.7:3100
+              isDefault: true
+              editable: false
+      notify: Restart Grafana
+
+    - name: Enable and start Grafana
+      ansible.builtin.systemd_service:
+        name: grafana-server
+        enabled: true
+        state: started
+
+    - name: Apply configuration changes
+      ansible.builtin.meta: flush_handlers
+
+    - name: Verify Grafana health
+      ansible.builtin.uri:
+        url: http://10.0.1.7:3000/api/health
+        status_code: 200
+      register: grafana_health
+      until: grafana_health.status == 200
+      retries: 24
+      delay: 5
+
+  handlers:
+    - name: Restart Grafana
+      ansible.builtin.systemd_service:
+        name: grafana-server
+        state: restarted

@@ -1,0 +1,33 @@
+loki.source.file "audit" {
+  targets = [
+    {
+      __path__ = "/var/log/kubernetes/audit/audit.log",
+      job      = "kubernetes-audit",
+      node     = "controlplane",
+    },
+  ]
+
+  forward_to = [loki.process.audit.receiver]
+}
+
+loki.process "audit" {
+  stage.json {
+    expressions = {
+      audit_time = "stageTimestamp",
+    }
+  }
+
+  stage.timestamp {
+    source            = "audit_time"
+    format            = "RFC3339Nano"
+    action_on_failure = "skip"
+  }
+
+  forward_to = [loki.write.monitoring.receiver]
+}
+
+loki.write "monitoring" {
+  endpoint {
+    url = "http://10.0.1.7:3100/loki/api/v1/push"
+  }
+}

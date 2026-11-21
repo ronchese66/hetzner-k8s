@@ -1,0 +1,151 @@
+---
+- name: Configure monitoring server
+  hosts: monitoring
+
+  tasks:
+    - name: Verify private IP
+      ansible.builtin.assert:
+        that:
+          - monitoring_ip in ansible_all_ipv4_addresses
+
+    - name: Set hostname
+      ansible.builtin.hostname:
+        name: "{{ inventory_hostname }}"
+
+    - name: Set timezone
+      community.general.timezone:
+        name: UTC
+
+    - name: Discover private network interface
+      ansible.builtin.command:
+        cmd: "ip -4 route get {{ bastion_ip }}"
+      register: private_route
+      changed_when: false
+
+    - name: Set private interface
+      ansible.builtin.set_fact:
+        monitoring_private_interface: "{{ private_route.stdout.split(' dev ')[1].split()[0] }}"
+
+    - name: Configure persistent default route
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/private-egress.service
+        owner: root
+        group: root
+        mode: "0644"
+        content: |
+          [Unit]
+          Description=Configure monitoring default route
+          Requires=hc-net-ifup@{{ monitoring_private_interface }}.service
+          After=hc-net-ifup@{{ monitoring_private_interface }}.service
+
+          [Service]
+          Type=oneshot
+          ExecStart=/usr/sbin/ip -4 route replace default via 10.0.0.1 dev {{ monitoring_private_interface }}
+          RemainAfterExit=yes
+
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: Enable default route
+      ansible.builtin.systemd_service:
+        name: private-egress.service
+        daemon_reload: true
+        enabled: true
+        state: started
+
+    - name: Verify default route
+      ansible.builtin.command:
+        cmd: ip -4 route get 1.1.1.1
+      register: route_check
+      changed_when: false
+      failed_when: "'via 10.0.0.1 dev ' ~ monitoring_private_interface not in route_check.stdout"
+
+    - name: Configure DNS
+      ansible.builtin.copy:
+        dest: /etc/resolv.conf
+        owner: root
+        group: root
+        mode: "0644"
+        content: |
+          nameserver 185.12.64.1
+          nameserver 185.12.64.2
+          
+    - name: Verify DNS resolution
+      ansible.builtin.command:
+        cmd: getent ahostsv4 mirror.stream.centos.org
+      changed_when: false
+
+    - name: Install packages
+      ansible.builtin.dnf:
+        name:
+          - nftables
+          - python3-libselinux
+          - policycoreutils
+        state: present
+
+    - name: Enforce SELinux
+      ansible.posix.selinux:
+        policy: targeted
+        state: enforcing
+
+    - name: Configure SSH hardening
+      ansible.builtin.copy:
+        dest: /etc/ssh/sshd_config.d/00-monitoring.conf
+        owner: root
+        group: root
+        mode: "0644"
+        content: |
+          PermitRootLogin no
+          PasswordAuthentication no
+          KbdInteractiveAuthentication no
+          PubkeyAuthentication yes
+          AllowUsers ansible
+          MaxAuthTries 3
+          AllowTcpForwarding local
+          AllowAgentForwarding no
+          X11Forwarding no
+          PermitTunnel no
+      notify: Reload SSH
+
+    - name: Validate SSH configuration
+      ansible.builtin.command:
+        cmd: /usr/sbin/sshd -t
+      changed_when: false
+
+    - name: Gather service facts
+      ansible.builtin.service_facts:
+
+    - name: Disable firewalld
+      ansible.builtin.systemd_service:
+        name: firewalld
+        state: stopped
+        enabled: false
+        masked: true
+      when: "'firewalld.service' in ansible_facts.services"
+
+    - name: Configure nftables
+      ansible.builtin.template:
+        src: ../../templates/nftables/monitoring.conf.j2
+        dest: /etc/sysconfig/nftables.conf
+        owner: root
+        group: root
+        mode: "0600"
+        validate: /usr/sbin/nft -c -f %s
+      notify: Reload nftables
+
+    - name: Enable nftables
+      ansible.builtin.systemd_service:
+        name: nftables
+        enabled: true
+        state: started
+
+  handlers:
+    - name: Reload SSH
+      ansible.builtin.systemd_service:
+        name: sshd
+        state: reloaded
+
+    - name: Reload nftables
+      ansible.builtin.systemd_service:
+        name: nftables
+        state: restarted
