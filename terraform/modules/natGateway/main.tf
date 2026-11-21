@@ -1,12 +1,12 @@
 resource "hcloud_server" "nat_gateway" {
-  name = "natGateway"
-  image = "debian-13"
+  name        = "natGateway"
+  image       = "debian-13"
   server_type = "cpx12"
-  location = "nbg1"
+  location    = "nbg1"
 
-  backups = false
-  delete_protection = false
-  rebuild_protection = false
+  backups                  = false
+  delete_protection        = false
+  rebuild_protection       = false
   shutdown_before_deletion = true
 
   ssh_keys = [var.ssh_key_id]
@@ -31,57 +31,57 @@ resource "hcloud_server" "nat_gateway" {
   EOF
 
   labels = {
-    nodeType = "natGateway"
-    managedBy = "terraform"
+    nodeType     = "natGateway"
+    managedBy    = "terraform"
     configuredBy = "ansible"
   }
 }
 
 resource "hcloud_server_network" "nat_gateway_network" {
-  server_id = hcloud_server.nat_gateway.id
+  server_id  = hcloud_server.nat_gateway.id
   network_id = var.network_id
-  ip = "10.0.1.6"
+  ip         = "10.0.1.6"
 }
 
 resource "hcloud_network_route" "nat_gateway_route" {
-  network_id = var.network_id
+  network_id  = var.network_id
   destination = "0.0.0.0/0"
-  gateway = hcloud_server_network.nat_gateway_network.ip
+  gateway     = hcloud_server_network.nat_gateway_network.ip
 }
 
 resource "hcloud_firewall" "nat_gateway_firewall" {
   name = "natGatewayFW"
 
   rule {
-    direction = "out"
-    protocol = "tcp"
-    port = "80"
+    direction       = "out"
+    protocol        = "tcp"
+    port            = "80"
     destination_ips = ["0.0.0.0/0"]
-    description = "Allow outbound HTTP"
+    description     = "Allow outbound HTTP"
   }
 
   rule {
-    direction = "out"
-    protocol = "tcp"
-    port = "443"
+    direction       = "out"
+    protocol        = "tcp"
+    port            = "443"
     destination_ips = ["0.0.0.0/0"]
-    description = "Allow outbound HTTPS"
+    description     = "Allow outbound HTTPS"
   }
 
   rule {
-    direction = "out"
-    protocol = "udp"
-    port = "53"
+    direction       = "out"
+    protocol        = "udp"
+    port            = "53"
     destination_ips = ["0.0.0.0/0"]
-    description = "Allow outbound DNS"
+    description     = "Allow outbound DNS"
   }
 
   rule {
-    direction = "out"
-    protocol = "tcp"
-    port = "53"
+    direction       = "out"
+    protocol        = "tcp"
+    port            = "53"
     destination_ips = ["0.0.0.0/0"]
-    description = "Allow outbound DNS TCP"
+    description     = "Allow outbound DNS TCP"
   }
 
   labels = {
@@ -91,5 +91,5 @@ resource "hcloud_firewall" "nat_gateway_firewall" {
 
 resource "hcloud_firewall_attachment" "nat_gateway_firewall_attachment" {
   firewall_id = hcloud_firewall.nat_gateway_firewall.id
-  server_ids = [hcloud_server.nat_gateway.id]
+  server_ids  = [hcloud_server.nat_gateway.id]
 }

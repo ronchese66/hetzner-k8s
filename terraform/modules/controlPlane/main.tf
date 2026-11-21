@@ -1,12 +1,12 @@
 resource "hcloud_server" "control_plane" {
-  name = "controlPlane"
-  image = "centos-stream-10"
+  name        = "controlPlane"
+  image       = "centos-stream-10"
   server_type = "cpx22"
-  location = "nbg1"
+  location    = "nbg1"
 
-  backups = false
-  delete_protection = false
-  rebuild_protection = false
+  backups                  = false
+  delete_protection        = false
+  rebuild_protection       = false
   shutdown_before_deletion = true
 
   public_net {
@@ -21,7 +21,7 @@ resource "hcloud_server" "control_plane" {
 
   placement_group_id = var.placement_group_id
 
-  ssh_keys = [ var.ssh_key_id ]
+  ssh_keys = [var.ssh_key_id]
 
   user_data = <<-EOF
   #cloud-config
@@ -42,10 +42,10 @@ resource "hcloud_server" "control_plane" {
         - ${var.public_key}
 EOF
 
-  
+
   labels = {
-    nodeType = "controlPlane"
-    managedBy = "terraform"
+    nodeType     = "controlPlane"
+    managedBy    = "terraform"
     configuredBy = "ansible"
   }
 }

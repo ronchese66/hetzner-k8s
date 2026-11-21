@@ -48,3 +48,16 @@ module "etcd_backup_volume" {
   source    = "./modules/etcd_backup_volume"
   server_id = module.controlPlane.server_id
 }
+
+module "api_audit_volume" {
+  source    = "./modules/api_audit_volume"
+  server_id = module.controlPlane.server_id
+}
+
+module "monitoring" {
+  source             = "./modules/monitoring"
+  network_id         = module.network.network_id
+  placement_group_id = module.network.placement_group_id
+  ssh_key_id         = data.hcloud_ssh_key.k8s_cluster_key.id
+  public_key         = data.hcloud_ssh_key.k8s_cluster_key.public_key
+}

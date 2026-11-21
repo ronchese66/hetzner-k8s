@@ -7,5 +7,5 @@ output "network_id" {
 }
 
 output "subnet_id" {
-  value = hcloud_network_subnet.k8s_cluster_private_subnet.id 
+  value = hcloud_network_subnet.k8s_cluster_private_subnet.id
 }

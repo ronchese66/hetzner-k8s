@@ -1,29 +1,29 @@
 resource "hcloud_server" "worker_nodes" {
   for_each = var.worker_nodes
 
-  name = each.key
-  image = "centos-stream-10"
+  name        = each.key
+  image       = "centos-stream-10"
   server_type = "cpx22"
-  location = "nbg1"
-  backups = false
+  location    = "nbg1"
+  backups     = false
 
   public_net {
     ipv4_enabled = false
     ipv6_enabled = false
-}
+  }
 
-network {
-  network_id = var.network_id
-  ip         = each.value.ip
-  alias_ips  = []
-}
+  network {
+    network_id = var.network_id
+    ip         = each.value.ip
+    alias_ips  = []
+  }
 
   placement_group_id = var.placement_group_id
 
-  ssh_keys = [ var.ssh_key_id ]
+  ssh_keys = [var.ssh_key_id]
 
-  delete_protection = false
-  rebuild_protection = false
+  delete_protection        = false
+  rebuild_protection       = false
   shutdown_before_deletion = true
 
   user_data = <<-EOF
@@ -47,8 +47,8 @@ EOF
 
 
   labels = {
-    nodeType = "worker"
-    managedBy = "terraform"
+    nodeType     = "worker"
+    managedBy    = "terraform"
     configuredBy = "ansible"
   }
 }
