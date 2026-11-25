@@ -35,6 +35,13 @@ table inet filter {
         udp dport 53 accept
         tcp dport { 53, 80, 443 } accept
 
+        ip daddr {{ control_plane_ip }} tcp dport 6443 accept
+        ip daddr { {{ control_plane_ip }}, 10.0.1.3, 10.0.1.4 } tcp dport { 9100, 10250 } accept
+
+        ip daddr {{ control_plane_ip }} tcp dport 6443 accept
+        ip daddr {{ control_plane_ip }} tcp dport 8080 accept
+        ip daddr { {{ control_plane_ip }}, 10.0.1.3, 10.0.1.4 } tcp dport { 9100, 10250 } accept
+
         ip protocol icmp ip daddr {{ private_subnet }} accept
     }
 }
