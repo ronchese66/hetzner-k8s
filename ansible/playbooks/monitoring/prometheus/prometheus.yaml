@@ -1,0 +1,229 @@
+
+global:
+  scrape_interval: 30s
+  scrape_timeout: 10s
+  evaluation_interval: 30s
+
+  external_labels:
+    cluster: hetzner-k8s
+
+storage:
+  tsdb:
+    retention:
+      time: 15d
+      size: 10GB
+
+rule_files:
+  - /etc/prometheus/rules/*.yaml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: [127.0.0.1:9093]
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: [127.0.0.1:9090]
+
+  - job_name: alertmanager
+    static_configs:
+      - targets: [127.0.0.1:9093]
+
+  - job_name: node-exporter
+    static_configs:
+      - targets: [10.0.1.2:9100]
+        labels:
+          node: controlplane
+
+      - targets: [10.0.1.3:9100]
+        labels:
+          node: worker-01
+
+      - targets: [10.0.1.4:9100]
+        labels:
+          node: worker-02
+
+      - targets: [127.0.0.1:9100]
+        labels:
+          node: monitoring
+
+  - job_name: apiserver
+    scheme: https
+    static_configs:
+      - targets: [10.0.1.2:6443]
+
+    authorization: &kube_auth
+      type: Bearer
+      credentials_file: /run/credentials/prometheus.service/token
+
+    tls_config: &kube_tls
+      ca_file: /run/credentials/prometheus.service/ca.crt
+
+  - job_name: kubelet
+    scheme: https
+    metrics_path: /metrics
+
+    static_configs:
+      - targets: [10.0.1.2:10250]
+        labels:
+          node: controlplane
+      - targets: [10.0.1.3:10250]
+        labels:
+          node: worker-01
+      - targets: [10.0.1.4:10250]
+        labels:
+          node: worker-02
+
+    authorization: *kube_auth
+    tls_config: &kubelet_tls
+      insecure_skip_verify: true
+
+  - job_name: cadvisor
+    scheme: https
+    metrics_path: /metrics/cadvisor
+
+    static_configs:
+      - targets: [10.0.1.2:10250]
+        labels:
+          node: controlplane
+      - targets: [10.0.1.3:10250]
+        labels:
+          node: worker-01
+      - targets: [10.0.1.4:10250]
+        labels:
+          node: worker-02
+
+    authorization: *kube_auth
+    tls_config: *kubelet_tls
+
+  - job_name: kube-state-metrics
+    scheme: https
+    authorization: *kube_auth
+    tls_config: *kube_tls
+
+    kubernetes_sd_configs:
+      - role: pod
+        api_server: https://10.0.1.2:6443
+        namespaces:
+          names: [kube-system]
+        authorization: *kube_auth
+        tls_config: *kube_tls
+
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_name]
+        action: keep
+        regex: kube-state-metrics
+
+      - source_labels: [__meta_kubernetes_pod_phase]
+        action: keep
+        regex: Running
+
+      - source_labels: [__meta_kubernetes_pod_container_port_number]
+        action: keep
+        regex: "8080"
+
+      - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_pod_name]
+        separator: /
+        target_label: instance
+
+      - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_pod_name]
+        separator: /
+        regex: (.+)/(.+)
+        target_label: __metrics_path__
+        replacement: /api/v1/namespaces/${1}/pods/${2}:8080/proxy/metrics
+
+      - target_label: __address__
+        replacement: 10.0.1.2:6443
+
+  - job_name: cloudnative-pg
+    scheme: https
+    authorization: *kube_auth
+    tls_config: *kube_tls
+
+    kubernetes_sd_configs:
+      - role: pod
+        api_server: https://10.0.1.2:6443
+        namespaces:
+          names: [healthchecks]
+        authorization: *kube_auth
+        tls_config: *kube_tls
+
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_label_cnpg_io_cluster]
+        action: keep
+        regex: healthchecks-db
+
+      - source_labels: [__meta_kubernetes_pod_phase]
+        action: keep
+        regex: Running
+
+      - source_labels: [__meta_kubernetes_pod_container_port_number]
+        action: keep
+        regex: "9187"
+
+      - source_labels: [__meta_kubernetes_pod_label_cnpg_io_instanceRole]
+        target_label: cnpg_role
+
+      - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_pod_name]
+        separator: /
+        target_label: instance
+
+      - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_pod_name]
+        separator: /
+        regex: (.+)/(.+)
+        target_label: __metrics_path__
+        replacement: /api/v1/namespaces/${1}/pods/${2}:9187/proxy/metrics
+
+      - target_label: __address__
+        replacement: 10.0.1.2:6443
+
+  - job_name: kubernetes-events
+    scheme: https
+    authorization: *kube_auth
+    tls_config: *kube_tls
+
+    kubernetes_sd_configs:
+      - role: pod
+        api_server: https://10.0.1.2:6443
+        authorization: *kube_auth
+        tls_config: *kube_tls
+
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+        action: keep
+        regex: "true"
+
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_job]
+        action: keep
+        regex: kubernetes-events
+
+      - source_labels: [__meta_kubernetes_pod_phase]
+        action: keep
+        regex: Running
+
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_port]
+        regex: "[0-9]+"
+        action: keep
+
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_port]
+        target_label: __tmp_metrics_port
+
+      - source_labels: [__meta_kubernetes_pod_container_port_number]
+        target_label: __tmp_metrics_port
+        action: keepequal
+
+      - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_pod_name]
+        separator: /
+        target_label: instance
+
+      - source_labels:
+          - __meta_kubernetes_namespace
+          - __meta_kubernetes_pod_name
+          - __meta_kubernetes_pod_annotation_prometheus_io_port
+        regex: ([^;]+);([^;]+);([0-9]+)
+        target_label: __metrics_path__
+        replacement: /api/v1/namespaces/${1}/pods/${2}:${3}/proxy/metrics
+
+      - target_label: __address__
+        replacement: 10.0.1.2:6443

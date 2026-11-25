@@ -1,0 +1,68 @@
+- name: Install Node Exporter
+  hosts: controlPlane:worker:monitoring
+
+  vars:
+    version: "1.13.1"
+    archive: "node_exporter-{{ version }}.linux-amd64"
+    install_dir: "/opt/{{ archive }}"
+    listen_address: "{{ '127.0.0.1' if inventory_hostname == 'monitoring' else ansible_host }}"
+
+  tasks:
+    - name: Install tar
+      ansible.builtin.dnf:
+        name: tar
+        state: present
+
+    - name: Download Node Exporter
+      ansible.builtin.get_url:
+        url: "https://github.com/prometheus/node_exporter/releases/download/v{{ version }}/{{ archive }}.tar.gz"
+        dest: "/tmp/{{ archive }}.tar.gz"
+        checksum: "sha256:5c00c5234f1ee45900b25539a5a0ab82146a098c15c16a4ec3bc855b597a6477"
+        mode: "0644"
+
+    - name: Extract Node Exporter
+      ansible.builtin.unarchive:
+        src: "/tmp/{{ archive }}.tar.gz"
+        dest: /opt
+        remote_src: true
+        creates: "{{ install_dir }}/node_exporter"
+
+    - name: Configure systemd
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/node-exporter.service
+        mode: "0644"
+        content: |
+          [Unit]
+          Description=Prometheus Node Exporter
+          Wants=network-online.target
+          After=network-online.target
+
+          [Service]
+          DynamicUser=yes
+          ExecStart={{ install_dir }}/node_exporter --web.listen-address={{ listen_address }}:9100
+          Restart=on-failure
+          RestartSec=5
+          NoNewPrivileges=true
+
+          [Install]
+          WantedBy=multi-user.target
+      notify: Restart Node Exporter
+
+    - name: Enable Node Exporter
+      ansible.builtin.systemd_service:
+        name: node-exporter
+        enabled: true
+        state: started
+        daemon_reload: true
+
+    - name: Verify metrics endpoint
+      ansible.builtin.uri:
+        url: "http://{{ listen_address }}:9100/metrics"
+        status_code: 200
+
+  handlers:
+    - name: Restart Node Exporter
+      ansible.builtin.systemd_service:
+        name: node-exporter
+        state: restarted
+        daemon_reload: true
