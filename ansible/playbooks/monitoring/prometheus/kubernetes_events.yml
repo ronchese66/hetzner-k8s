@@ -1,0 +1,143 @@
+- name: Install Kubernetes Events Exporter
+  hosts: controlPlane
+  tasks:
+  
+    - name: Deploy Kubernetes Events Exporter
+      kubernetes.core.helm:
+        release_name: kubernetes-events-exporter
+        chart_ref: oci://ghcr.io/ownkube/charts/kubernetes-events-exporter
+        chart_version: "0.2.0"
+        release_namespace: kube-system
+        kubeconfig: /home/ansible/.kube/config
+        binary_path: /usr/local/sbin/helm
+        wait: true
+        atomic: true
+        release_values:
+          replicaCount: 1
+          image:
+            tag: "0.2.0"
+          service:
+            enabled: false
+          serviceMonitor:
+            enabled: false
+          serviceAccount:
+            create: true
+          rbac:
+            create: true
+          nodeSelector:
+            kubernetes.io/hostname: controlplane
+          tolerations:
+            - key: node.kubernetes.io/network-unavailable
+              operator: Exists
+              effect: NoSchedule
+          podAnnotations:
+            prometheus.io/scrape: "true"
+            prometheus.io/job: kubernetes-events
+            prometheus.io/port: "2112"
+            prometheus.io/path: /metrics
+          config:
+            logLevel: info
+            maxEventAgeSeconds: 60
+            metricsNamePrefix: event_exporter_
+            route:
+              routes:
+                - match:
+                    - receiver: prometheus
+            receivers:
+              - name: prometheus
+                prometheus:
+                  eventsMetricsNamePrefix: event_exporter_
+                  reasonFilter:
+                    Pod:
+                      - BackOff
+                      - FailedMount
+                      - FailedScheduling
+                      - Unhealthy
+                      - OOMKilled
+                    Node:
+                      - NodeNotReady
+                      - NodeReady
+                      - MemoryPressure
+                      - DiskPressure
+                    Deployment:
+                      - ScalingReplicaSet
+                    ReplicaSet:
+                      - FailedCreate
+                    PersistentVolumeClaim:
+                      - ProvisioningFailed
+
+    - name: Check Deployment
+      kubernetes.core.k8s_info:
+        api_version: apps/v1
+        kind: Deployment
+        name: kubernetes-events-exporter
+        namespace: kube-system
+        kubeconfig: /home/ansible/.kube/config
+        wait: true
+        wait_timeout: 180
+        wait_condition:
+          type: Available
+          status: "True"
+      register: deployment
+
+    - name: Check Pods
+      kubernetes.core.k8s_info:
+        kind: Pod
+        namespace: kube-system
+        kubeconfig: /home/ansible/.kube/config
+        label_selectors:
+          - app.kubernetes.io/name=kubernetes-events-exporter
+          - app.kubernetes.io/instance=kubernetes-events-exporter
+      register: pods
+
+    - name: Check ServiceAccount and RBAC
+      kubernetes.core.k8s_info:
+        api_version: "{{ item.api_version }}"
+        kind: "{{ item.kind }}"
+        name: kubernetes-events-exporter
+        namespace: "{{ item.namespace | default(omit) }}"
+        kubeconfig: /home/ansible/.kube/config
+      loop:
+        - kind: ServiceAccount
+          api_version: v1
+          namespace: kube-system
+        - kind: ClusterRole
+          api_version: rbac.authorization.k8s.io/v1
+        - kind: ClusterRoleBinding
+          api_version: rbac.authorization.k8s.io/v1
+      register: rbac_resources
+
+    - name: Check Service absence
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Service
+        name: kubernetes-events-exporter
+        namespace: kube-system
+        kubeconfig: /home/ansible/.kube/config
+      register: service
+
+    - name: Verify Kubernetes resources
+      ansible.builtin.assert:
+        that:
+          - deployment.resources | length == 1
+          - deployment.resources[0].spec.replicas == 1
+          - deployment.resources[0].status.readyReplicas | default(0) == 1
+          - pods.resources | length == 1
+          - pods.resources[0].spec.nodeName == 'controlplane'
+          - pods.resources[0].status.phase == 'Running'
+          - pods.resources[0].status.containerStatuses[0].ready | bool
+          - rbac_resources.results | map(attribute='resources') | map('length') | list == [1, 1, 1]
+          - service.resources | length == 0
+
+    - name: Verify metrics endpoint
+      ansible.builtin.uri:
+        url: "http://{{ pods.resources[0].status.podIP }}:2112/metrics"
+        status_code: 200
+        return_content: true
+        timeout: 10
+      register: metrics
+
+    - name: Verify Events metrics
+      ansible.builtin.assert:
+        that:
+          - "'event_exporter_events_sent' in metrics.content"

@@ -1,0 +1,112 @@
+- name: Install Alertmanager
+  hosts: monitoring
+  vars:
+    version: "0.35.1"
+    archive: "alertmanager-{{ version }}.linux-amd64"
+    install_dir: "/opt/{{ archive }}"
+
+  tasks:
+
+    - name: Download Alertmanager
+      ansible.builtin.get_url:
+        url: "https://github.com/prometheus/alertmanager/releases/download/v{{ version }}/{{ archive }}.tar.gz"
+        dest: "/tmp/{{ archive }}.tar.gz"
+        checksum: "sha256:626bb9ae4486e14044705a6d6a0394f2ad8e3bf40df918f18f15b3d3775aa069"
+        mode: "0644"
+
+    - name: Extract Alertmanager
+      ansible.builtin.unarchive:
+        src: "/tmp/{{ archive }}.tar.gz"
+        dest: /opt
+        remote_src: true
+        creates: "{{ install_dir }}/alertmanager"
+
+    - name: Create configuration directory
+      ansible.builtin.file:
+        path: /etc/alertmanager
+        state: directory
+        mode: "0755"
+
+    - name: Install Alertmanager configuration
+      ansible.builtin.copy:
+        dest: /etc/alertmanager/alertmanager.yml
+        mode: "0644"
+        content: |
+          global:
+            resolve_timeout: 5m
+
+          route:
+            receiver: "null"
+            group_by: ["alertname", "namespace"]
+            group_wait: 30s
+            group_interval: 5m
+            repeat_interval: 4h
+
+          receivers:
+            - name: "null"
+      notify: Restart Alertmanager
+
+    - name: Validate configuration
+      ansible.builtin.command:
+        cmd: "{{ install_dir }}/amtool check-config /etc/alertmanager/alertmanager.yml"
+      changed_when: false
+
+    - name: Configure systemd
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/alertmanager.service
+        mode: "0644"
+        content: |
+          [Unit]
+          Description=Prometheus Alertmanager
+          Wants=network-online.target
+          After=network-online.target
+
+          [Service]
+          DynamicUser=yes
+          StateDirectory=alertmanager
+          ExecStart={{ install_dir }}/alertmanager --config.file=/etc/alertmanager/alertmanager.yml --storage.path=/var/lib/alertmanager --web.listen-address=127.0.0.1:9093 --cluster.listen-address=
+          Restart=on-failure
+          RestartSec=5
+
+          [Install]
+          WantedBy=multi-user.target
+      notify: Restart Alertmanager
+
+    - name: Enable Alertmanager
+      ansible.builtin.systemd_service:
+        name: alertmanager
+        enabled: true
+        state: started
+        daemon_reload: true
+
+    - name: Apply configuration changes
+      ansible.builtin.meta: flush_handlers
+
+    - name: Verify readiness endpoint
+      ansible.builtin.uri:
+        url: http://127.0.0.1:9093/-/ready
+        status_code: 200
+        timeout: 5
+      register: readiness
+      retries: 10
+      delay: 3
+      until: readiness.status == 200
+
+    - name: Verify Alertmanager API
+      ansible.builtin.uri:
+        url: http://127.0.0.1:9093/api/v2/status
+        status_code: 200
+        return_content: true
+      register: api_status
+
+    - name: Verify Alertmanager status
+      ansible.builtin.assert:
+        that:
+          - api_status.json.cluster.status == 'disabled'
+
+  handlers:
+    - name: Restart Alertmanager
+      ansible.builtin.systemd_service:
+        name: alertmanager
+        state: restarted
+        daemon_reload: true
