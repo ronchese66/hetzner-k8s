@@ -1,4 +1,3 @@
-
 global:
   scrape_interval: 30s
   scrape_timeout: 10s
@@ -165,6 +164,12 @@ scrape_configs:
       - source_labels: [__meta_kubernetes_pod_label_cnpg_io_instanceRole]
         target_label: cnpg_role
 
+      - source_labels: [__meta_kubernetes_namespace]
+        target_label: namespace
+
+      - source_labels: [__meta_kubernetes_pod_name]
+        target_label: pod
+
       - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_pod_name]
         separator: /
         target_label: instance
@@ -186,6 +191,8 @@ scrape_configs:
     kubernetes_sd_configs:
       - role: pod
         api_server: https://10.0.1.2:6443
+        namespaces:
+          names: [kube-system]
         authorization: *kube_auth
         tls_config: *kube_tls
 
